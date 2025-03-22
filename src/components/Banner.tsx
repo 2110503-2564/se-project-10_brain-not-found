@@ -12,7 +12,7 @@ export default function Banner () {
     const { data: session } = useSession();
     
     if (session && session.user) {
-      console.log(session.user.token);
+      console.log("Bannerrrrrrrr"+session.user.token);
   } else {
       console.log("No session or user data available.");
   }

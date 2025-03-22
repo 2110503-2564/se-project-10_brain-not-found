@@ -16,7 +16,7 @@ export default async function userLogiIn(userEmail:string , userPassword:string)
     if(!response.ok){
         throw new Error ("Something went wrong to login");
     }
-
-    return await response.json();
+    const data = await response.json();
+    return data;
     
 }
