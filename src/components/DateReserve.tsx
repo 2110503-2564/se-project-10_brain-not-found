@@ -5,32 +5,32 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { Select , MenuItem } from '@mui/material'
 import { useState , useEffect} from 'react'
 import { Dayjs } from 'dayjs'
-import getVenues from "@/libs/getVenues";
+import getShops from "@/libs/getShops";
 
-export default function DateReserve( {onDateChange , onLocationChange , onLocationNameChange , defaultVenue}
-    : { onDateChange:Function , onLocationChange:Function , onLocationNameChange:Function , defaultVenue:string|null}
+export default function DateReserve( {onDateChange , onLocationChange , onLocationNameChange , defaultShop}
+    : { onDateChange:Function , onLocationChange:Function , onLocationNameChange:Function , defaultShop:string|null}
  ){
 
     const [reserveDate , setReserveDate] = useState<Dayjs | null>(null);
-    const [selectedVenue , setSelectedVenue] = useState(defaultVenue);
-    const [venues, setVenues] = useState<VenueItem[]>([]);
+    const [selectedShop , setSelectedShop] = useState(defaultShop);
+    const [shops, setShops] = useState<ShopItem[]>([]);
 
     useEffect(() => {
-        const fetchVenues = async () => {
-          const data = await getVenues();
-          setVenues(data.data);
+        const fetchShops = async () => {
+          const data = await getShops();
+          setShops(data.data);
         };
-        fetchVenues();
+        fetchShops();
       }, []);
 
       useEffect(() => {
-        if(!defaultVenue){
-        setSelectedVenue("");
+        if(!defaultShop){
+        setSelectedShop("");
         }
       }, []);
 
-      const handleVenueChange = (event: any) => {
-        setSelectedVenue(event.target.value);
+      const handleShopChange = (event: any) => {
+        setSelectedShop(event.target.value);
         onLocationChange(event.target.value);
       };
 
@@ -52,17 +52,17 @@ export default function DateReserve( {onDateChange , onLocationChange , onLocati
                         required
                         variant="standard" 
                         name='location'  
-                        id='venue' 
+                        id='shop' 
                         className='h-[2em] w-[200px] rounded-md py-2 px-2 my-2'
-                        value={selectedVenue}
-                        onChange={ (e) => {handleVenueChange(e);}}
+                        value={selectedShop}
+                        onChange={ (e) => {handleShopChange(e);}}
                     >
                         <MenuItem key={"default"} value={""} disabled>
-                            Please select a Venue. </MenuItem>
+                            Please select a shop. </MenuItem>
 
-                        {venues.map((venue) => (
-                            <MenuItem key={venue.id} value={venue.id} onClick={ ()=>{ onLocationNameChange(venue.name); }}>
-                                {venue.name}
+                        {shops.map((shop) => (
+                            <MenuItem key={shop.id} value={shop.id} onClick={ ()=>{ onLocationNameChange(shop.name); }}>
+                                {shop.name}
                             </MenuItem>
                             ))}
                     </Select>

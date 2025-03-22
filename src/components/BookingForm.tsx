@@ -9,19 +9,19 @@ import { addBooking } from "@/redux/features/bookSlice";
 
 interface BookingFormProps {
   userId: string;
-  venue: VenueItem | null;
+  shop: ShopItem | null;
 }
 
-export default function BookingForm({ userId, venue }: BookingFormProps) {
+export default function BookingForm({ userId, shop }: BookingFormProps) {
   const dispatch = useDispatch<AppDispatch>();
 
   const makeBooking = () => {
-    console.log(reserveDate,"user : "+ userId,"venue : "+ selectedVenue);
-    if (reserveDate && userId && selectedVenue &&selectedVenueName) {
+    console.log(reserveDate,"user : "+ userId,"shop : "+ selectedShop);
+    if (reserveDate && userId && selectedShop &&selectedShopName) {
       const booking: BookingItem = {
         userId: userId,
-        shopId: selectedVenue,
-        shopName: selectedVenueName,
+        shopId: selectedShop,
+        shopName: selectedShopName,
         reservationDate: dayjs(reserveDate).format("YYYY-MM-DD"),
         createAt: dayjs().format("YYYY-MM-DD"), // Use current date for creation
       };
@@ -31,8 +31,8 @@ export default function BookingForm({ userId, venue }: BookingFormProps) {
   };
 
   const [reserveDate, setReserveDate] = useState<Dayjs | null>(null);
-  const [selectedVenue, setSelectedVenue] = useState<string | null>(venue?._id || null);
-  const [selectedVenueName, setSelectedVenueName] = useState<string | null>(venue?.name||null);
+  const [selectedShop, setSelectedShop] = useState<string | null>(shop?._id || null);
+  const [selectedShopName, setSelectedShopName] = useState<string | null>(shop?.name||null);
   return (
     <div className="flex flex-col space-y-2">
       {/* <TextField
@@ -64,21 +64,21 @@ export default function BookingForm({ userId, venue }: BookingFormProps) {
             setReserveDate(value);
           }}
           onLocationChange={(value: string) => {
-            setSelectedVenue(value);
+            setSelectedShop(value);
           }}
           onLocationNameChange={(value: string) => {
-            setSelectedVenueName(value);
+            setSelectedShopName(value);
           }}
-          defaultVenue={selectedVenue??""}
+          defaultShop={selectedShop??""}
         />
       </div>
 
       <button
         className="block bg-blue-500 text-white rounded-md px-8 py-3 hover:bg-blue-600 shadow-2xl"
-        name="Book Venue"
+        name="Book shop"
         onClick={makeBooking}
       >
-        Book this Venue
+        Book this Massage Shop
       </button>
     </div>
   );

@@ -1,6 +1,6 @@
 export default async function userLogiIn(userEmail:string , userPassword:string) {
 
-    const response = await fetch("http://localhost:5000/api/v1/auth/login" , {
+    const response = await fetch("https://project-sd-fronted-sub-backend.vercel.app/api/v1/auth/login" , {
         method: "POST",
         headers: {
             "Content-Type": "application/json"

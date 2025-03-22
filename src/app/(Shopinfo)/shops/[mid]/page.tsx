@@ -1,11 +1,11 @@
 import Image from "next/image"
-import getVenue from "@/libs/getVenue"
+import getVenue from "@/libs/getShop"
 import Link from "next/link"
 
 export default async function VenueDetailPage({params} :
-    {params: {vid: string}}
+    {params: {mid: string}}
 ){
-    const venueDetail = await getVenue(params.vid)
+    const venueDetail = await getVenue(params.mid)
     console.log(venueDetail.data.picture);
 
     return(
@@ -35,7 +35,7 @@ export default async function VenueDetailPage({params} :
                             <div> close time: {venueDetail.data.closeTime}</div>
                          </div>
 
-                        <Link href={`/booking/?shop=${params.vid}`}>
+                        <Link href={`/booking/?shops=${params.mid}`}>
                         <button className="block bg-blue-500 text-white rounded-md px-8 py-3 
                             hover:bg-blue-600 shadow-2xl"
                             name="Book Venue">

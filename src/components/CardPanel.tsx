@@ -2,15 +2,15 @@
 import Card from "./Card";
 import { useReducer, useRef , useEffect, useState}  from "react";
 import Link from "next/link";
-import getVenues from '@/libs/getVenues'
+import getShops from '@/libs/getShops'
 
 export default function CardPanel(){
 
-    const [CardResponse, setCardResponse] = useState<VenueJson | null>(null);
+    const [CardResponse, setCardResponse] = useState<ShopJson | null>(null);
 
     useEffect(()=>{
         const fetchData = async ()=>{
-            const response = await getVenues();
+            const response = await getShops();
             setCardResponse(response);
             }
             fetchData();
@@ -25,31 +25,31 @@ export default function CardPanel(){
     // ]
     
 
-    const defaultVenue = new Map([
+    const defaultShop = new Map([
         ['The Bloom Pavilion', 0],
         ['Spark Space', 0],
         ['The Grand Table', 0],
       ]);
 
-    const compareReducer = (venueList:Map<string , number>, action:{type:string, venueName:string , rating?:number} )=>{
+    const compareReducer = (ShopList:Map<string , number>, action:{type:string, ShopName:string , rating?:number} )=>{
         switch(action.type){
             case "add":{
-                const newValueList = new Map(venueList);
-                newValueList.set(action.venueName , action.rating??0);   //if rating is null . then reset to 0 !!!!!!!!!!
-                return newValueList;
+                const newShopList = new Map(ShopList);
+                newShopList.set(action.ShopName , action.rating??0);   //if rating is null . then reset to 0 !!!!!!!!!!
+                return newShopList;
             }
             case "remove":{
-                const newValueList = new Map(venueList);
-                newValueList.delete(action.venueName);
-                return newValueList;
+                const newShopList = new Map(ShopList);
+                newShopList.delete(action.ShopName);
+                return newShopList;
             }
             default:{
-                return venueList;
+                return ShopList;
             }
         }
     }
 
-    const [venueList, dispatchCompare] = useReducer(compareReducer, new Map(defaultVenue));
+    const [ShopList, dispatchCompare] = useReducer(compareReducer, new Map(defaultShop));
 
     const countRef = useRef(0);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -60,11 +60,11 @@ export default function CardPanel(){
          <div>
                 <div className="m-5 flex flex-row content-around justify-around flex-wrap">
                     {
-                        CardResponse.data.map((cardItem:VenueItem)=>
-                        <Link href={`/venue/${cardItem.id}`} className="w-1/5" key={cardItem.id}>
-                        <Card venueName={cardItem.name} imgSrc={cardItem.picture}
-                            onCompare={(venue:string ,rating:number|undefined)=>
-                                dispatchCompare({type:"add", venueName:venue , rating})}
+                        CardResponse.data.map((cardItem:ShopItem)=>
+                        <Link href={`/Shop/${cardItem.id}`} className="w-1/5" key={cardItem.id}>
+                        <Card shopName={cardItem.name} imgSrc={cardItem.picture}
+                            onCompare={(Shop:string ,rating:number|undefined)=>
+                                dispatchCompare({type:"add", ShopName:Shop , rating})}
                         />
                         </Link>
                         )
@@ -72,15 +72,15 @@ export default function CardPanel(){
 
                 </div>
                 <div className="w-full text-xl font-medium text-center mt-4">
-                    Venue List with Ratings: {venueList.size} 
-                        { Array.from(venueList).map( ([venueName , rating]) => 
-                        <div data-testid={venueName} key={venueName} onClick={()=>dispatchCompare({type:"remove", venueName:venueName})} > 
-                            {venueName} : {rating} 
+                    Shop List with Ratings: {ShopList.size} 
+                        { Array.from(ShopList).map( ([ShopName , rating]) => 
+                        <div data-testid={ShopName} key={ShopName} onClick={()=>dispatchCompare({type:"remove", ShopName:ShopName})} > 
+                            {ShopName} : {rating} 
                         </div>  ) }
                 </div>
 
                 <button className="block bg-blue-500 text-white rounded-md px-8 py-3 hover:bg-blue-600 shadow-2xl"
-                name="Book Venue"
+                name="Book Shop"
                 onClick={()=>countRef.current++}>
                 click me
                 </button>
@@ -92,7 +92,7 @@ export default function CardPanel(){
                 ref={inputRef}/>
 
                 <button className="block bg-blue-500 text-white rounded-md px-8 py-3 hover:bg-blue-600 shadow-2xl"
-                name="Book Venue"
+                name="Book Shop"
                 onClick={()=>{ inputRef.current?.focus();}}>
                 Focus Input
                 </button>

@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 import { redirect } from "next/navigation";
 import BookingForm from "@/components/BookingForm";
-import getVenue from "@/libs/getVenue";
+import getShop from "@/libs/getShop";
 
 export default async function Bookings ({ searchParams }: { searchParams: { shop: string } }){
     const session = await getServerSession(authOptions);
@@ -12,28 +12,28 @@ export default async function Bookings ({ searchParams }: { searchParams: { shop
       }
     // console.log("Session : : : "+ session);
 
-      const venueId = searchParams.shop;
-      let venue ;
+      const shopId = searchParams.shop;
+      let shop ;
     
-      if (venueId) {
-        venue = await getVenue(venueId);
-        if (!venue || !venue.data) {
-          redirect('/venue');
+      if (shopId) {
+        shop = await getShop(shopId);
+        if (!shop || !shop.data) {
+          redirect('/shop');
         }
       } else {
-        venue = { data: null }
-        // const venues = await getVenues();
-        // if (venues.data && venues.data.length > 0) {
-        //   venue = { data: venues.data[0] };
+        shop = { data: null }
+        // const shops = await getShops();
+        // if (shops.data && shops.data.length > 0) {
+        //   shop = { data: shops.data[0] };
         // } else {
-        //   redirect('/venue');
+        //   redirect('/shop');
         // }
       }
 
     return (
         <main className="w-[100%] flex flex-col items-center space-y-4 bg-slate-500 m-5 p-5 rounded-lg">
-            <div className='text-xl font-medium'>Venue Booking</div>
-             <BookingForm userId={session.user._id} venue={venue.data}/>
+            <div className='text-xl font-medium'>Massagae Shop Reservaion</div>
+             <BookingForm userId={session.user._id} shop={shop.data}/>
         </main>
     )
 }

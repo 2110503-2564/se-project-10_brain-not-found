@@ -1,4 +1,4 @@
- interface VenueItem {
+ interface ShopItem {
     _id: string,
     name: string,
     address: string,
@@ -15,11 +15,11 @@
     id: string
   }
   
- interface VenueJson {
+ interface ShopJson {
     success: boolean,
     count: number,
     // pagination: Object,
-    data: VenueItem[]
+    data: ShopItem[]
   }
 
  interface BookingItem {

@@ -10,7 +10,6 @@ export default async function TopMenu(){
     const session = await getServerSession(authOptions);
     if(session)console.log(session);
 
-
     return (
         <div className={style.menucontainer}>
             
@@ -19,7 +18,7 @@ export default async function TopMenu(){
 
             <TopMenuItem title="about" link="/about"/>
             <TopMenuItem title="Booking" link="/booking"/>
-            <TopMenuItem title="select Venue" link="/venue"/>
+            <TopMenuItem title="select Massage Shop" link="/shops"/>
 
             <div className='absolute left-0 h-full flex flex-row'>
             

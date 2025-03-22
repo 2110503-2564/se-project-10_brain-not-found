@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { VlogPlayer } from "./VlogPlayer"
+import { VlogPlayer } from './VlogPlayer'
 import MuiRating from '@mui/material/Rating';
 
 export default function VlogCard(){
