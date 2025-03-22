@@ -1,0 +1,27 @@
+.menucontainer {
+    height:  80px;
+    background-color: wheat;
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    right: 0px;
+    z-index: 30;
+    border-top: 1px solid lightblue;
+    border-bottom: 1px solid lightblue;
+    display: flex;
+    flex-direction: row-reverse;
+}
+
+.logoimg {
+    height: 100%;
+    width: auto;
+}
+
+.itemcontainer {
+    width: 120px;
+    text-align: center; 
+    margin-top: auto;
+    margin-bottom: auto;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    color: gray;
+}

@@ -1,0 +1,36 @@
+import Image from 'next/image';
+import InteractiveCard from './InteractiveCard';
+import { Rating } from './Rating';
+
+export default function Card( {venueName, imgSrc, onCompare}
+     : {venueName: string , imgSrc: string , onCompare?:Function}){
+
+    return(
+        <InteractiveCard contentName={venueName}>
+
+            <div className='w-full h-[60%] relative rounded-t-lg'>
+                <Image src={imgSrc}
+                alt="Product Picture"
+                fill={true}
+                className='object-cover rounded-t-lg'
+                />
+
+            </div>
+            <div className='w-full h-[20%] p-[10px]'>
+                <h2 className="text-xl font-bold mb-2 text-black">{venueName}</h2>
+                <p className="text-sm mb-2 text-black">Donut, could you please provide a description here?</p>
+            </div>
+
+            {/* <Rating venueName={venueName.toString()} onCompare={onCompare}/> */}
+
+            {
+                onCompare?
+                    <button className="block h-[10%] text-sm rounded-md bg-sky-600
+                    hover:bg-indigo-600 mx-4 px-2 py-1 text-white"
+                    onClick={(e)=>{e.stopPropagation(); e.preventDefault(); onCompare(venueName);} }
+                    >Compare</button>
+                : ''
+            }
+        </InteractiveCard>
+    );
+}
