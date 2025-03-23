@@ -10,10 +10,9 @@ export default async function Bookings ({ searchParams }: { searchParams: { shop
     if (!session?.user) {
         redirect('/api/auth/signin?callbackUrl=/booking'); // Redirect to sign-in if no session
       }
-    // console.log("Session : : : "+ session);
 
       const shopId = searchParams.shop;
-      let shop ;
+      let shop;
     
       if (shopId) {
         shop = await getShop(shopId);
@@ -22,12 +21,6 @@ export default async function Bookings ({ searchParams }: { searchParams: { shop
         }
       } else {
         shop = { data: null }
-        // const shops = await getShops();
-        // if (shops.data && shops.data.length > 0) {
-        //   shop = { data: shops.data[0] };
-        // } else {
-        //   redirect('/shop');
-        // }
       }
 
     return (

@@ -1,3 +1,5 @@
+
+
  interface ShopItem {
     _id: string,
     name: string,
@@ -12,6 +14,7 @@
     closeTime:string,
     __v: number,
     reservations:Array<BookingItem>,
+    timeSlot:Array<String>,
     id: string
   }
   
@@ -24,6 +27,7 @@
 
  interface BookingItem {
     reservationDate: string,
+    timeReceiveService: string,
     userId: string,
     shopName: string,
     shopId: string,

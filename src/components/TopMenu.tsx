@@ -9,10 +9,8 @@ export default async function TopMenu(){
 
     const session = await getServerSession(authOptions);
     if(session)console.log(session);
-
     return (
         <div className={style.menucontainer}>
-            
             <Image src={'/img/logo.png'} className={style.logoimg} alt="logo"
             width={0} height={0} sizes="100vh"/>
 
@@ -25,12 +23,21 @@ export default async function TopMenu(){
             {
                 session? <Link href="/api/auth/signout">
                     <div className='flex items-center gap-2 h-full px-4'>
-                        Sign-Out of {session.user.name}
+                        Sign-Out
                     </div></Link>
-                : <Link href="/api/auth/signin">
+                : 
+                <div className='flex flex-row'>
+                    <Link href="/api/auth/signin">
                     <div className='flex items-center gap-2 h-full px-4 bg-white rounded-2xl border border-blue-500 hover:bg-blue-500 hover:text-white'>
                         Sign-In
-                    </div></Link>
+                    </div>
+                    </Link>
+                    <Link href="/register">
+                    <div className='flex items-center gap-2 h-full px-4 bg-white rounded-2xl border border-blue-500 hover:bg-blue-500 hover:text-white'>
+                        Get Started
+                    </div>
+                    </Link>
+                </div>
             }
             
             <TopMenuItem title="My Booking" link="/mybooking"/>
