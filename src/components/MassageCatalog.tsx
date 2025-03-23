@@ -11,7 +11,9 @@ export default async function MassageCatalog({shopsJson} : {shopsJson:Promise<Sh
         <div className="m-5 flex flex-row content-around justify-around flex-wrap">
                     {
                         shopJsonReady.data.map((ShopItem:ShopItem)=>
-                        <Link href={`/shops/${ShopItem.id}`} className="w-1/5" key={ShopItem.id}>
+                        <Link href={`/shops/${ShopItem.id}`} 
+                        className="w-full sm:w-1/2 md:w-1/3 lg:w-1/4 xl:w-1/5 p-2 sm:p-3 md:p-4 lg:p-6 xl:p-8"
+                         key={ShopItem.id}>
                         <Card shopName={ShopItem.name} imgSrc={ShopItem.picture??'/img/logo.png'}/>
                         </Link>
                         )
