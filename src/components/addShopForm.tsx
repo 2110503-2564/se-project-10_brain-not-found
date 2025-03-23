@@ -28,7 +28,7 @@ export default async function AddShopForm() {
       const tel = formData.get('tel')?.toString() || '';
       const openTime = formData.get('openTime')?.toString() || '';
       const closeTime = formData.get('closeTime')?.toString() || '';
-
+      
       console.log('Shop creating ~~~~~~');
       const newShop = await shops.create({
         name,

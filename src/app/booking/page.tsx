@@ -19,14 +19,15 @@ export default async function Bookings ({ searchParams }: { searchParams: { shop
         if (!shop || !shop.data) {
           redirect('/shop');
         }
-      } else {
-        shop = { data: null }
-      }
+      }  else return;
+      // else {
+      //   shop = { data: null }
+      // }
 
     return (
         <main className="w-[100%] flex flex-col items-center space-y-4 bg-slate-500 m-5 p-5 rounded-lg">
             <div className='text-xl font-medium'>Massagae Shop Reservaion</div>
-             <BookingForm userId={session.user._id} shop={shop.data}/>
+             <BookingForm token={session.user.token} userId={session.user._id} shop={shop.data}/>
         </main>
     )
 }

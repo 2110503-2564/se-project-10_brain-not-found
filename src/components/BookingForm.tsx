@@ -1,4 +1,4 @@
-"use client";
+"use client"
 import DateReserve from "@/components/DateReserve";
 import { TextField } from "@mui/material";
 import { useState } from "react";
@@ -6,30 +6,35 @@ import dayjs, { Dayjs } from "dayjs";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/redux/store";
 import { addBooking } from "@/redux/features/bookSlice";
+import createReservation from "@/libs/createReservation";
+import { getToken } from "next-auth/jwt";
+
 interface BookingFormProps {
+  token: string;
   userId: string;
-  shop: ShopItem | null;
+  shop: ShopItem;
 }
 
-export default function BookingForm({ userId, shop }: BookingFormProps) {
+export default function BookingForm({ token , userId, shop }: BookingFormProps) {
   const dispatch = useDispatch<AppDispatch>();
   const [reserveDate, setReserveDate] = useState<Dayjs | null>(null);
-  const [selectedShop, setSelectedShop] = useState<string | null>(shop?._id || null);
-  const [selectedShopName, setSelectedShopName] = useState<string | null>(shop?.name||null);
-  const [selectTimeReceiveService , setSelectTimeReceiveService] = useState<string | null>("0");
-  const makeBooking = () => {
-    console.log(reserveDate,"user : "+ userId,"shop : "+ selectedShop);
-    if (reserveDate && userId && selectedShop && selectedShopName && selectTimeReceiveService) {
-      const booking: BookingItem = {
-        userId: userId,
-        shopId: selectedShop,
-        shopName: selectedShopName,
-        reservationDate: dayjs(reserveDate).format("YYYY-MM-DD"),
-        timeReceiveService: selectTimeReceiveService,
-        createAt: dayjs().format("YYYY-MM-DD"), // Use current date for creation
+  
+  const makeBooking = async () => {
+    if (reserveDate && userId) {
+      const booking: Reservationbody = {
+        reservationDate: dayjs(reserveDate).toDate(),
+        user: userId,
+        shop: shop._id
       };
-      console.log("Booking:", booking);
-      dispatch(addBooking(booking));
+
+      try {
+        const result = await createReservation({token , Data: booking});
+        console.log("Booking Reult : " + result.toString());
+        // console.log("Booking created:", result);
+        // dispatch(addBooking(booking));
+      } catch (error) {
+        console.error("Error creating booking:", error);
+      }
     }
   };
 
@@ -41,13 +46,6 @@ export default function BookingForm({ userId, shop }: BookingFormProps) {
           onDateChange={(value: Dayjs) => {
             setReserveDate(value);
           }}
-          onLocationChange={(value: string) => {
-            setSelectedShop(value);
-          }}
-          onLocationNameChange={(value: string) => {
-            setSelectedShopName(value);
-          }}
-          defaultShop={selectedShop??""}
         />
       </div>
 

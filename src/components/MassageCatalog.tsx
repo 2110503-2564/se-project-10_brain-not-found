@@ -2,6 +2,9 @@
 import Card from "./Card";
 import Link from "next/link";
 
+
+// const shopsJson : Promise<ShopJson> = getShops();
+
 export default async function MassageCatalog({shopsJson} : {shopsJson:Promise<ShopJson>}){
     const shopJsonReady = await shopsJson
     console.log(shopJsonReady)

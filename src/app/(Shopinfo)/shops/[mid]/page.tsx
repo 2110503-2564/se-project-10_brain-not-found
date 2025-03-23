@@ -1,13 +1,25 @@
 import Image from "next/image"
 import getVenue from "@/libs/getShop"
 import Link from "next/link"
+import BookingForm from "@/components/BookingForm";
 
-export default async function VenueDetailPage({params} :
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
+import getUserProfile from '@/libs/getUserProfile';
+import dayjs from "dayjs";
+
+
+export default async function ShopDetailPage({params} :
     {params: {mid: string}}
 ){
+
     const venueDetail = await getVenue(params.mid)
     console.log(venueDetail.data.picture);
 
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user.token) return null;
+
+    
     return(
         <main className="text-center p-5">
                 <h1 className=" text-3xl font-bold">Massage Shop Detail</h1>
@@ -42,6 +54,8 @@ export default async function VenueDetailPage({params} :
                                 Make Booking
                             </button>
                         </Link>
+
+                        <BookingForm token={ session.user.token.toString() } userId={session.user._id} shop={venueDetail.data}></BookingForm>
                         
                     </div>
                 </div>

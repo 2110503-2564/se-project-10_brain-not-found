@@ -13,8 +13,7 @@
     openTime:string,
     closeTime:string,
     __v: number,
-    reservations:Array<BookingItem>,
-    timeSlot:Array<String>,
+    reservations:Array<Reservationbody>,
     id: string
   }
   
@@ -25,11 +24,24 @@
     data: ShopItem[]
   }
 
- interface BookingItem {
-    reservationDate: string,
-    timeReceiveService: string,
-    userId: string,
-    shopName: string,
-    shopId: string,
-    createAt: string,
+  interface Reservationbody{
+    reservationDate: Date,
+    user: string,
+    shop: string,
+  }
+  
+ interface ReservaionJson {
+    success: boolean,
+    count: number,
+    from: string,
+    data: ShopItem[]
+  }
+
+  interface ReservationItem{
+    _id: string,
+    reservationDate: Date,
+    user: string,
+    shop:ShopItem,
+    createAt: Date,
+    id: string
   }

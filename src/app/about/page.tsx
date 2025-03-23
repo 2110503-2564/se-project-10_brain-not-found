@@ -1,4 +1,13 @@
-export default function About(){
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
+import getReservations from "@/libs/getReservation";
+
+export default async function About(){
+
+    const session = await getServerSession(authOptions);
+
+    const result = await getReservations(token: session?.user.token);
+    
     return (
         <main>
             <div>Who am I ? ? ?</div>
