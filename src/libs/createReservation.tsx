@@ -11,10 +11,13 @@ export default async function createReservation(
         },
         body: JSON.stringify({
             reservationDate: Data.reservationDate,
-            userId: Data.user
-        })
+            userId: Data.user,
+        }),
     });
-
+    console.log("Request Body:", {
+        reservationDate: Data.reservationDate,
+        userId: Data.user,
+    });
     if (!response.ok) {
         throw new Error("Something went wrong in creating the reservation. : " + response);
     }

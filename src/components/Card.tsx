@@ -2,8 +2,8 @@ import Image from 'next/image';
 import InteractiveCard from './InteractiveCard';
 import { Rating } from './Rating';
 
-export default function Card( {shopName, imgSrc, onCompare}
-     : {shopName: string , imgSrc: string , onCompare?:Function}){
+export default function Card( {shopName,desc, imgSrc, onCompare}
+     : {shopName: string , imgSrc: string ,desc:string, onCompare?:Function}){
 
     return(
         <InteractiveCard contentName={shopName}>
@@ -18,7 +18,7 @@ export default function Card( {shopName, imgSrc, onCompare}
             </div>
             <div className='w-full h-[20%] p-[10px]'>
                 <h2 className="text-xl font-bold mb-2 text-black">{shopName}</h2>
-                <p className="text-sm mb-2 text-black">Donut, could you please provide a description here?</p>
+                <p className="text-sm mb-2 text-black">{desc}</p>
             </div>
 
             {/* <Rating shopName={shopName.toString()} onCompare={onCompare}/> */}

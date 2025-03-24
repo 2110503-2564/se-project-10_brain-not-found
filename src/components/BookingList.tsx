@@ -14,15 +14,6 @@ export default async function BookingList() {
 
     const bookingItems = await getReservations(session.user.token.toString());
 
-    
-    // const deleteBooking = async (reservationId: string) => {
-    //     try {
-    //         const response = await deleteReservation({ token:session.user.token.toString() , reservationId:reservationId });
-    //     } catch (error) {
-    //         console.error("Error deleting booking:", error);
-    //     }
-    // };
-
     return (
         <>
             <BookingListClient

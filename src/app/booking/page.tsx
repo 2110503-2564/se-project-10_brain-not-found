@@ -17,7 +17,7 @@ export default async function Bookings ({ searchParams }: { searchParams: { shop
       if (shopId) {
         shop = await getShop(shopId);
         if (!shop || !shop.data) {
-          redirect('/shop');
+          redirect('/shops');
         }
       }  else return;
       // else {

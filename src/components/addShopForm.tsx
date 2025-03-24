@@ -32,7 +32,7 @@ export default async function AddShopForm() {
       console.log('Shop creating ~~~~~~');
       const newShop = await shops.create({
         name,
-        description,
+        // description,
         picture,
         address,
         district,

@@ -14,6 +14,7 @@
     closeTime:string,
     __v: number,
     reservations:Array<Reservationbody>,
+    desc: string
     id: string
   }
   
@@ -41,7 +42,6 @@
     _id: string,
     reservationDate: Date,
     user: string,
-    shop:ShopItem,
+    shop: ShopItem,
     createAt: Date,
-    id: string
   }

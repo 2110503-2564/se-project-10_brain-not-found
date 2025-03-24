@@ -12,7 +12,7 @@ export default function shop(){
 
     return(
         <main className="text-center p-5">
-            <h1 className="text-xl font-bold">Massage Shops :)</h1>
+            <h1 className="text-xl font-bold">Massage Shops :</h1>
             <Suspense fallback={<p>Loading . . . <LinearProgress/></p>}>
                 <MassageCatalog shopsJson={shops}/>
             </Suspense>

@@ -25,7 +25,7 @@ export default async function ShopDetailPage({params} :
                 <h1 className=" text-3xl font-bold">Massage Shop Detail</h1>
                 <div className="flex flex-row my-5">
                     <Image 
-                        src={(venueDetail.data.picture)}
+                        src={(venueDetail.data.picture??'/img/logo.png')}
                         alt={venueDetail.data.name}
                         width={0} 
                         height={0} 
@@ -47,14 +47,14 @@ export default async function ShopDetailPage({params} :
                             <div> close time: {venueDetail.data.closeTime}</div>
                          </div>
 
-                        <Link href={`/booking/?shops=${params.mid}`}>
+                        {/* <Link href={`/booking/?shops=${params.mid}`}>
                         <button className="block bg-blue-500 text-white rounded-md px-8 py-3 
                             hover:bg-blue-600 shadow-2xl"
                             name="Book Venue">
                                 Make Booking
                             </button>
-                        </Link>
-
+                        </Link> */}
+                        
                         <BookingForm token={ session.user.token.toString() } userId={session.user._id} shop={venueDetail.data}></BookingForm>
                         
                     </div>

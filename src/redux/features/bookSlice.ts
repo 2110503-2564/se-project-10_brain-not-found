@@ -2,7 +2,7 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 // import { BookingItem } from "../../../interfaces";
 
 interface BookState {
-    bookItems: BookingItem[];
+    bookItems: ReservationItem[];
 }
 
 const initialState: BookState = {
@@ -13,10 +13,10 @@ export const bookSlice = createSlice({
     name: "booking",
     initialState,
     reducers: {
-        addBooking: (state, action: PayloadAction<BookingItem>) => {
-            const { userId, shopId , reservationDate } = action.payload;
+        addBooking: (state, action: PayloadAction<ReservationItem>) => {
+            const { user, shop , reservationDate } = action.payload;
             const existingBookingIndex = state.bookItems.findIndex(
-                (item : BookingItem ) => item.userId === userId && item.shopId === shopId && item.reservationDate === reservationDate
+                (item : ReservationItem ) => item.user === user && item.shop === shop && item.reservationDate === reservationDate
             );
 
             if (existingBookingIndex !== -1) { //if found the same venue and bookDate | replace it
@@ -25,12 +25,12 @@ export const bookSlice = createSlice({
                 state.bookItems.push(action.payload);
             }
         },
-        removeBooking: (state, action: PayloadAction<BookingItem>) => {
-            const remainItems = state.bookItems.filter( (obj: BookingItem) => {
-                return !((obj.userId === action.payload.userId) 
-                && (obj.shopId === action.payload.shopId) 
+        removeBooking: (state, action: PayloadAction<ReservationItem>) => {
+            const remainItems = state.bookItems.filter( (obj: ReservationItem) => {
+                return !((obj.user === action.payload.user) 
+                && (obj.shop === action.payload.shop) 
                 && (obj.reservationDate === action.payload.reservationDate) 
-                && (obj.createAt === action.payload.createAt) )
+                && (obj.createAt === action.payload.createAt))
             })
             state.bookItems = remainItems;
             // console.log(state.bookItems);

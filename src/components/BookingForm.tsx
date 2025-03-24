@@ -1,4 +1,4 @@
-"use client"
+'use client'
 import DateReserve from "@/components/DateReserve";
 import { TextField } from "@mui/material";
 import { useState } from "react";
@@ -8,6 +8,7 @@ import { AppDispatch } from "@/redux/store";
 import { addBooking } from "@/redux/features/bookSlice";
 import createReservation from "@/libs/createReservation";
 import { getToken } from "next-auth/jwt";
+import { revalidateTag } from "next/cache";
 
 interface BookingFormProps {
   token: string;
@@ -18,7 +19,7 @@ interface BookingFormProps {
 export default function BookingForm({ token , userId, shop }: BookingFormProps) {
   const dispatch = useDispatch<AppDispatch>();
   const [reserveDate, setReserveDate] = useState<Dayjs | null>(null);
-  
+
   const makeBooking = async () => {
     if (reserveDate && userId) {
       const booking: Reservationbody = {
@@ -26,12 +27,12 @@ export default function BookingForm({ token , userId, shop }: BookingFormProps) 
         user: userId,
         shop: shop._id
       };
-
+      console.log("Booking Data:", booking);
       try {
-        const result = await createReservation({token , Data: booking});
-        console.log("Booking Reult : " + result.toString());
-        // console.log("Booking created:", result);
-        // dispatch(addBooking(booking));
+        console.log(token)
+        const result = await createReservation({ token , Data: booking });
+        console.log("Booking Result:", result);
+        // dispatch(addBooking(booking));  // หากต้องการใช้ Redux
       } catch (error) {
         console.error("Error creating booking:", error);
       }
@@ -43,10 +44,15 @@ export default function BookingForm({ token , userId, shop }: BookingFormProps) 
       <div className="w-fit space-y-2">
         <div className="text-md text-left">Reserve Date and Location</div>
         <DateReserve
-          onDateChange={(value: Dayjs) => {
+        openTime={shop.openTime}
+        closeTime={shop.closeTime} 
+        onDateChange={(value: Dayjs | null) => {
+          if (value) {
+            console.log("onDateChange ===> " + value.toDate());
             setReserveDate(value);
-          }}
-        />
+          }
+        }}
+      />
       </div>
 
       <button
