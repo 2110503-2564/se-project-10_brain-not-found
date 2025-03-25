@@ -7,6 +7,7 @@ import { removeBooking } from '@/redux/features/bookSlice';
 import deleteReservation from '@/libs/deleteReservation';
 import dayjs from 'dayjs';
 import Link from 'next/link';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 
 interface ReservationItem {
     _id: string;
@@ -28,19 +29,34 @@ interface BookingListClientProps {
 const BookingListClient: React.FC<BookingListClientProps> = ({ token, bookings }) => {
     const dispatch = useDispatch();
     const [updatedBookings, setUpdatedBookings] = useState<ReservationItem[]>(bookings);
+    const [isDialogOpen, setDialogOpen] = useState(false);
+    const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
 
-    const deleteBooking = async (reservationId: string) => {
-        try {
-            const response = await deleteReservation({ token, reservationId });
-            if (response.success) {
-                dispatch(removeBooking(response));
-                setUpdatedBookings((prev) => prev.filter((item) => item._id !== reservationId));
-            } else {
-                console.error('Error: Failed to delete reservation');
+    const handleCancelClick = (reservationId: string) => {
+        setSelectedBookingId(reservationId);
+        setDialogOpen(true);
+    };
+
+    const handleCloseDialog = () => {
+        setDialogOpen(false);
+        setSelectedBookingId(null);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (selectedBookingId) {
+            try {
+                const response = await deleteReservation({ token, reservationId: selectedBookingId });
+                if (response.success) {
+                    dispatch(removeBooking(response));
+                    setUpdatedBookings((prev) => prev.filter((item) => item._id !== selectedBookingId));
+                } else {
+                    console.error('Error: Failed to delete reservation');
+                }
+            } catch (error) {
+                console.error('Error deleting reservation:', error);
             }
-        } catch (error) {
-            console.error('Error deleting reservation:', error);
         }
+        handleCloseDialog();
     };
 
     return (
@@ -74,7 +90,7 @@ const BookingListClient: React.FC<BookingListClientProps> = ({ token, bookings }
                             <div className="flex space-x-3">
                                 <button
                                     className="bg-orange-500 text-white rounded-md px-5 py-2 hover:bg-orange-600 shadow-lg"
-                                    onClick={() => deleteBooking(item._id)}
+                                    onClick={() => handleCancelClick(item._id)}
                                 >
                                     Cancel
                                 </button>
@@ -88,6 +104,22 @@ const BookingListClient: React.FC<BookingListClientProps> = ({ token, bookings }
                     </div>
                 ))
             )}
+
+            {/* Confirmation Dialog */}
+            <Dialog open={isDialogOpen} onClose={handleCloseDialog}>
+                <DialogTitle>Confirm Cancellation</DialogTitle>
+                <DialogContent>
+                    <p>Are you sure you want to cancel this reservation?</p>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseDialog} color="secondary">
+                        No, Keep it
+                    </Button>
+                    <Button onClick={handleConfirmDelete} color="primary">
+                        Yes, Cancel it
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </div>
     );
 };
