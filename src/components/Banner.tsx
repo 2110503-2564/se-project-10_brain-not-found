@@ -1,54 +1,78 @@
 'use client'
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image'
+import Image from 'next/image';
 import { useSession } from 'next-auth/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-export default function Banner () {
-    const covers = ["/img/cover.jpg" , "/img/cover2.jpg","/img/cover3.jpg","/img/cover4.jpg" ];
-    const [index,setIndex] = useState(0);
+export default function Banner() {
+    const covers = [
+        "/img/forBanner/massage1.jpg", 
+        "/img/forBanner/massage2.jpg", 
+        "/img/forBanner/massage3.jpg",
+        "/img/forBanner/massage4.jpg",
+        "/img/forBanner/massage5.jpg",
+        "/img/forBanner/massage6.jpg",
+    ];
+    const [index, setIndex] = useState(0);
+    const [isHovered, setIsHovered] = useState(false);
     const router = useRouter();
-
     const { data: session } = useSession();
-    
+
     if (session && session.user) {
-      console.log(session.user.token);
-  } else {
-      console.log("No session or user data available.");
-  }
+        console.log(session.user.token);
+    } else {
+        console.log("No session or user data available.");
+    }
+
+    const changeImage = (direction: number) => {
+        setIndex((prevIndex) => (prevIndex + direction + covers.length) % covers.length);
+    };
 
     return (
-        <div className="relative w-full h-[500px]  justify-center overflow-hidden" 
-            onClick={()=>{setIndex((index+1)%4);}}>
-            <Image src={covers[index]} 
-             alt="Banner picture"
-             fill={true}
-             className='object-cover'
-             />
+        <div 
+            className="relative w-full h-[500px] flex justify-center overflow-hidden"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            {/* ใช้ AnimatePresence เพื่อให้ Transition ลื่นไหลขึ้น */}
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: 100 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -100 }}
+                    transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                    className="absolute w-full h-full"
+                >
+                    <Image 
+                        src={covers[index]} 
+                        alt="Banner picture"
+                        fill={true}
+                        className="object-cover"
+                    />
+                </motion.div>
+            </AnimatePresence>
 
-             <div className="pt-20 relative text-white text-center z-10 flex flex-col items-center justify-center gap-2">
-                <h1 className='italic text-5xl font-bold font-serif'>Relax and Rejuvenate with Our Massage Shop</h1>
-                <h3 className='italic text-2xl font-serif'>Book Your Massage Shop Reservation Today!</h3>   
-             </div>
-            
-             {
-                session? <div className='text-cyan-300 border border-cyan-300
-                font-semibold py-2 px-2 m-2 rounded z-30 absolute top-0 right-0'>Welcome {session.user?.name} </div>
-                : null
-             }
+            {/* ปุ่มเลื่อนซ้าย */}
+            {isHovered && (
+                <button 
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-3 rounded-full hover:bg-opacity-70 transition-opacity duration-300"
+                    onClick={() => changeImage(-1)}
+                >
+                    ←
+                </button>
+            )}
 
-             <div className='bg-white text-cyan-600 border border-cyan-600
-             font-semibold py-2 px-2 m-2 rounded z-30 absolute bottom-0 right-0
-             hover:bg-cyan-600 hover:text-white'
-             onClick={(e)=>{router.push('/shops'); e.stopPropagation();}}>
-                select Massage Shop
-             </div>
-             <div className='text-cyan-600 border border-cyan-600
-             font-semibold py-2 px-2 m-2 rounded z-30 absolute bottom-0'>
-             index : {index}
-             </div>
+            {/* ปุ่มเลื่อนขวา */}
+            {isHovered && (
+                <button 
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-3 rounded-full hover:bg-opacity-70 transition-opacity duration-300"
+                    onClick={() => changeImage(1)}
+                >
+                    →
+                </button>
+            )}
         </div>
-        
     );
-
 }

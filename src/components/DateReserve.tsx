@@ -18,10 +18,6 @@ export default function DateReserve({
     const open = dayjs(openTime, 'HH:mm');
     const close = dayjs(closeTime, 'HH:mm');
 
-  const isValidTime = (time: Dayjs) => {
-    return time.isAfter(open) && time.isBefore(close);
-  };
-
   const handleDateChange = (value: Dayjs | null) => {
     if (value) {
       // console.log("handleChange ::: "+ value.toDate());
@@ -53,7 +49,7 @@ export default function DateReserve({
                   .set('minute', time.minute());
 
                 // ตรวจสอบว่าเวลาเลือกนั้นอยู่ในช่วงที่กำหนดหรือไม่
-                return !isValidTime(selectedTimeToday);
+                return selectedTimeToday.isBefore(open) || selectedTimeToday.isAfter(close);
               }
               return false;
             }}

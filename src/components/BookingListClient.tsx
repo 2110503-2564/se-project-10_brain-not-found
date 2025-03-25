@@ -5,6 +5,7 @@ import { useDispatch } from "react-redux";
 import { removeBooking } from "@/redux/features/bookSlice";
 import deleteReservation from "@/libs/deleteReservation";
 import { revalidatePath } from "next/cache";
+import dayjs from "dayjs";
 
 interface BookingListClientProps {
     token: string;
@@ -24,6 +25,7 @@ export default function BookingListClient({ token, bookings }: BookingListClient
         }
     };
     
+
     return (
         <>
             {bookings.length === 0 ? (
@@ -43,8 +45,8 @@ export default function BookingListClient({ token, bookings }: BookingListClient
                             <div className="text-sm">Booker ID: {item.user}</div>
                             <div className="text-sm">Create At: {new Date(item.createAt).toDateString()}</div>
                             <div className="text-sm">Booking Date: {new Date(item.reservationDate).toDateString()}</div>
-                            <div className="text-sm">Booking Time: {new Date(item.reservationDate).toTimeString()}</div>
-
+                            <div className="text-sm">Booking Time: {dayjs(item.reservationDate).subtract(7, 'hour').format('HH:mm')}</div>
+                     
                             <button
                                 className="m-2 block bg-blue-500 text-white rounded-md px-8 py-3 hover:bg-blue-600 shadow-2xl"
                                 name="Book Venue"

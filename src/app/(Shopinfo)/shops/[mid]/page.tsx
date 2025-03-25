@@ -14,12 +14,8 @@ export default async function ShopDetailPage({params} :
 ){
 
     const venueDetail = await getVenue(params.mid)
-    console.log(venueDetail.data.picture);
-
     const session = await getServerSession(authOptions);
-    if (!session || !session.user.token) return null;
 
-    
     return(
         <main className="text-center p-5">
                 <h1 className=" text-3xl font-bold">Massage Shop Detail</h1>
@@ -46,16 +42,8 @@ export default async function ShopDetailPage({params} :
                             <div> open time: {venueDetail.data.openTime}</div>
                             <div> close time: {venueDetail.data.closeTime}</div>
                          </div>
-
-                        {/* <Link href={`/booking/?shops=${params.mid}`}>
-                        <button className="block bg-blue-500 text-white rounded-md px-8 py-3 
-                            hover:bg-blue-600 shadow-2xl"
-                            name="Book Venue">
-                                Make Booking
-                            </button>
-                        </Link> */}
                         
-                        <BookingForm token={ session.user.token.toString() } userId={session.user._id} shop={venueDetail.data}></BookingForm>
+                        <BookingForm session={ session } shop={venueDetail.data}></BookingForm>
                         
                     </div>
                 </div>

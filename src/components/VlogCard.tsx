@@ -1,35 +1,22 @@
-'use client'
-import { useState } from 'react'
-import { VlogPlayer } from './VlogPlayer'
-import MuiRating from '@mui/material/Rating';
+import React from 'react';
 
-export default function VlogCard(){
-
-    const [playing, setPlaying] = useState(true)
-    const [rating, setRating] = useState<number | null>(0);
-
-    return (
-        <div className="w-[80%] shadow-lg mx-[10%] my-10 p-2
-         rounded-lg bg-gray-500 flex flex-row">
-            <VlogPlayer videoSrc="/video/city_tiny.mp4" isPlaying={playing}/>
-
-            <div className='m-5'>Some Where Natural
-
-            <button className="block bg-blue-500 text-white rounded-md px-8 py-3 hover:bg-blue-600 shadow-2xl"
-                onClick={()=>{ setPlaying(!playing)}}>
-                { playing? 'Pause' : 'Play'}
-                </button>
-                
-                <MuiRating
-                    value={ (rating==undefined)? 0 : rating }
-                    onChange={(e, newValue) => {
-                        if(newValue!=null)
-                        setRating(newValue);
-                    }}
-                    onClick={(e)=>e.stopPropagation()}
-                />
-
-            </div>
-        </div>
-    )
+interface VlogCardProps {
+  title: string;
+  description: string;
+  img: string;
 }
+
+const VlogCard: React.FC<VlogCardProps> = ({ title, description, img }) => {
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg shadow-md overflow-hidden flex flex-col justify-between">
+        <img src={img} alt={title} className="w-full h-48 object-cover" />
+        <div className="p-4 flex-grow">
+          <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
+          <p className="text-gray-600 mt-2">{description}</p>
+        </div>
+      </div>
+    );
+  };
+  
+  export default VlogCard;
+  

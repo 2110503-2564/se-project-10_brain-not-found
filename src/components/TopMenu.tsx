@@ -9,7 +9,8 @@ export default async function TopMenu() {
   if (session) console.log(session);
 
   return (
-    <div className="fixed top-0 left-0 right-0 h-20 bg-wheat z-30 border-t border-b border-lightblue flex justify-between items-center px-4 space-x-6">
+    <div className="fixed top-0 left-0 right-0 h-20 bg-white
+    z-30 border-t border-b border-lightblue flex justify-between items-center px-4 space-x-6">
       {/* <Image 
         src="/img/logo.png" 
         alt="logo" 
@@ -20,8 +21,10 @@ export default async function TopMenu() {
       /> */}
 
       <div className="flex space-x-6">
+        <TopMenuItem title="Home" link="/"/>
         <TopMenuItem title="About" link="/about" />
         <TopMenuItem title="Massage" link="/shops" />
+        <TopMenuItem title="My Booking" link="/mybooking" />
       </div>
 
       <div className="flex items-center space-x-6">
@@ -43,8 +46,6 @@ export default async function TopMenu() {
             </Link>
           </div>
         )}
-
-        <TopMenuItem title="My Booking" link="/mybooking" />
       </div>
     </div>
   );
