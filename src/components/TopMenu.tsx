@@ -25,6 +25,10 @@ export default async function TopMenu() {
         <TopMenuItem title="About" link="/about" />
         <TopMenuItem title="My Booking" link="/mybooking" />
         <TopMenuItem title="Massage" link="/shops"/>
+        {
+          session?.user.role === 'admin' &&
+          <TopMenuItem title="Admin Create Shop" link="/addShopForAdmin"/>
+        }
       </div>
 
       <div className="flex items-center space-x-6">
