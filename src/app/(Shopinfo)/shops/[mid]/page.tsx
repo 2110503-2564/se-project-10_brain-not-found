@@ -1,64 +1,126 @@
-import Image from "next/image"
-import getVenue from "@/libs/getShop"
-import Link from "next/link"
+import Image from "next/image";
+import getVenue from "@/libs/getShop";
 import BookingForm from "@/components/BookingForm";
-
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
-import getUserProfile from '@/libs/getUserProfile';
-import dayjs from "dayjs";
+import { Paper, Typography, Grid, Box, Divider } from "@mui/material";
+import { orange, grey } from "@mui/material/colors";
 
-
-export default async function ShopDetailPage({params} :
-    {params: {mid: string}}
-){
-
-    const venueDetail = await getVenue(params.mid)
-    console.log(venueDetail.data.picture);
-
+export default async function ShopDetailPage({ params }: { params: { mid: string } }) {
+    const shopDetail = await getVenue(params.mid);
     const session = await getServerSession(authOptions);
-    if (!session || !session.user.token) return null;
 
-    
-    return(
-        <main className="text-center p-5">
-                <h1 className=" text-3xl font-bold">Massage Shop Detail</h1>
-                <div className="flex flex-row my-5">
-                    <Image 
-                        src={(venueDetail.data.picture??'/img/logo.png')}
-                        alt={venueDetail.data.name}
-                        width={0} 
-                        height={0} 
-                        sizes="100vw"
-                        className="roudned-lg w-[30%]"
-                    />
+    if (!shopDetail || !shopDetail.data) {
+        return (
+            <Box
+                sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '100vh',
+                    bgcolor: grey[100],
+                    padding: 4,
+                }}
+            >
+                <Typography variant="h4" component="h1" align="center" gutterBottom sx={{ color: orange[800], fontWeight: 'bold' }}>
+                    Shop Not Found
+                </Typography>
+            </Box>
+        );
+    }
 
-                    <div className="text-md mx-5 block text-left ">
-                        <div className="text-2xl font-bold">{venueDetail.data.name}</div>
-            
-                        <div>address : {venueDetail.data.address}</div>
-                        <div>district : {venueDetail.data.district}</div>
-                        <div>province : {venueDetail.data.province}</div>
-                        <div>region : {venueDetail.data.region}</div>
-                        <div>postal code : {venueDetail.data.postalcode}</div>
-                        <div>tel : {venueDetail.data.tel}</div>
-                        <div className="px-5 py-1">
-                            <div> open time: {venueDetail.data.openTime}</div>
-                            <div> close time: {venueDetail.data.closeTime}</div>
-                         </div>
+    return (
+        <Box
+            sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                minHeight: '100vh',
+                bgcolor: grey[100],
+                padding: 4,
+            }}
+        >
+            <Paper
+                elevation={3}
+                sx={{
+                    width: '90%',
+                    maxWidth: 1200,
+                    padding: 4,
+                    borderRadius: 4,
+                    bgcolor: 'white',
+                }}
+            >
+                <Typography variant="h4" component="h1" align="center" gutterBottom sx={{ color: orange[800], fontWeight: 'bold' }}>
+                    Massage Shop Detail
+                </Typography>
 
-                        {/* <Link href={`/booking/?shops=${params.mid}`}>
-                        <button className="block bg-blue-500 text-white rounded-md px-8 py-3 
-                            hover:bg-blue-600 shadow-2xl"
-                            name="Book Venue">
-                                Make Booking
-                            </button>
-                        </Link> */}
-                        
-                        <BookingForm token={ session.user.token.toString() } userId={session.user._id} shop={venueDetail.data}></BookingForm>
-                        
-                    </div>
-                </div>
-        </main>
-    )
+                <Grid container spacing={3} alignItems="center">
+                    {/* Larger Image Column */}
+                    <Grid item xs={12} md={6}>
+                        <Box
+                            sx={{
+                                width: '100%',
+                                height: 'auto',
+                                borderRadius: 2,
+                                overflow: 'hidden',
+                                boxShadow: 2,
+                                // Add max height for image
+                                maxHeight: 500, // Adjust as needed
+                            }}
+                        >
+                            <Image
+                                src={(shopDetail.data.picture ?? '/img/logo.png')}
+                                alt={shopDetail.data.name}
+                                width={0}
+                                height={0}
+                                sizes="100vw"
+                                style={{ width: '100%', height: 'auto', objectFit: 'cover' }} // Add objectFit
+                            />
+                        </Box>
+                    </Grid>
+                    {/* Smaller Detail Column */}
+                    <Grid item xs={12} md={6}>
+                        <Box sx={{ textAlign: 'left', padding: 2 }}>
+                            <Typography variant="h5" component="div" sx={{ color: orange[700], fontWeight: 'bold' }}>
+                                {shopDetail.data.name}
+                            </Typography>
+                            <Typography variant="body1" sx={{ color: grey[800] }}>
+                                <b>Address:</b> {shopDetail.data.address}
+                            </Typography>
+                            <Typography variant="body1" sx={{ color: grey[800] }}>
+                                <b>District:</b> {shopDetail.data.district}
+                            </Typography>
+                            <Typography variant="body1" sx={{ color: grey[800] }}>
+                                <b>Province:</b> {shopDetail.data.province}
+                            </Typography>
+                            <Typography variant="body1" sx={{ color: grey[800] }}>
+                                <b>Region:</b> {shopDetail.data.region}
+                            </Typography>
+                            <Typography variant="body1" sx={{ color: grey[800] }}>
+                                <b>Postal Code:</b> {shopDetail.data.postalcode}
+                            </Typography>
+                            <Typography variant="body1" sx={{ color: grey[800] }}>
+                                <b>Tel:</b> {shopDetail.data.tel}
+                            </Typography>
+                            <Box sx={{ padding: 1 }}>
+                                <Typography variant="body1" sx={{ color: grey[800] }}>
+                                    <b>Open Time:</b> {shopDetail.data.openTime}
+                                </Typography>
+                                <Typography variant="body1" sx={{ color: grey[800] }}>
+                                    <b>Close Time:</b> {shopDetail.data.closeTime}
+                                </Typography>
+                            </Box>
+                        </Box>
+                    </Grid>
+                </Grid>
+
+                <Divider sx={{ my: 4, borderColor: orange[300] }} />
+
+                <Box sx={{ padding: 3 }}>
+                    <BookingForm session={session} shop={shopDetail.data} />
+                </Box>
+            </Paper>
+        </Box>
+    );
 }

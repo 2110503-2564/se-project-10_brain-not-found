@@ -24,6 +24,6 @@ export default async function userSignUp(
     if(!response.ok){
         throw new Error ("Something went wrong to SignUp");
     }
-    const data = await response.json();
-    return data;
+
+    return await response.json();
 }

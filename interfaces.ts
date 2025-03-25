@@ -29,18 +29,20 @@
     reservationDate: Date,
     user: string,
     shop: string,
+    userName: string
   }
   
  interface ReservaionJson {
     success: boolean,
     count: number,
     from: string,
-    data: ShopItem[]
+    data: ReservationItem[]
   }
 
   interface ReservationItem{
     _id: string,
     reservationDate: Date,
+    userName: string,
     user: string,
     shop: ShopItem,
     createAt: Date,
