@@ -1,29 +1,45 @@
-'use client'
-import Image from "next/image";
-import { useDispatch } from "react-redux";
-import { removeBooking } from "@/redux/features/bookSlice";
-import deleteReservation from "@/libs/deleteReservation";
-import dayjs from "dayjs";
-import Link from "next/link";
-import { useState } from "react";
+'use client';
 
-export default function BookingListClient({ token, bookings }: { token: string; bookings: ReservationItem[] }) {
+import React, { useState } from 'react';
+import Image from 'next/image';
+import { useDispatch } from 'react-redux';
+import { removeBooking } from '@/redux/features/bookSlice';
+import deleteReservation from '@/libs/deleteReservation';
+import dayjs from 'dayjs';
+import Link from 'next/link';
+
+interface ReservationItem {
+    _id: string;
+    user: string;
+    userName: string;
+    createAt: string;
+    reservationDate: string;
+    shop: {
+        name: string;
+        picture?: string;
+    };
+}
+
+interface BookingListClientProps {
+    token: string;
+    bookings: ReservationItem[];
+}
+
+const BookingListClient: React.FC<BookingListClientProps> = ({ token, bookings }) => {
     const dispatch = useDispatch();
-    const [updatedBookings, setUpdatedBookings] = useState(bookings);  // ใช้ state เพื่อจัดการข้อมูล booking
+    const [updatedBookings, setUpdatedBookings] = useState<ReservationItem[]>(bookings);
 
     const deleteBooking = async (reservationId: string) => {
         try {
             const response = await deleteReservation({ token, reservationId });
             if (response.success) {
-                dispatch(removeBooking(response));  // ลบข้อมูลจาก Redux
-
-                // ลบรายการออกจาก state bookings
-                setUpdatedBookings((prevBookings) => prevBookings.filter((item) => item._id !== reservationId));
+                dispatch(removeBooking(response));
+                setUpdatedBookings((prev) => prev.filter((item) => item._id !== reservationId));
             } else {
-                console.error("Error: Failed to delete reservation");
+                console.error('Error: Failed to delete reservation');
             }
         } catch (error) {
-            console.error("Error deleting reservation:", error);
+            console.error('Error deleting reservation:', error);
         }
     };
 
@@ -58,12 +74,10 @@ export default function BookingListClient({ token, bookings }: { token: string; 
                             <div className="flex space-x-3">
                                 <button
                                     className="bg-orange-500 text-white rounded-md px-5 py-2 hover:bg-orange-600 shadow-lg"
-                                    onClick={() => deleteBooking(item._id)}  // ลบข้อมูลเมื่อกด Cancel
+                                    onClick={() => deleteBooking(item._id)}
                                 >
                                     Cancel
                                 </button>
-                                
-                                {/* ใช้ Link แทนการใช้ router.push() */}
                                 <Link href={`/mybooking/${item._id}`}>
                                     <button className="bg-gray-500 text-white rounded-md px-5 py-2 hover:bg-gray-600 shadow-lg">
                                         Edit
@@ -76,4 +90,6 @@ export default function BookingListClient({ token, bookings }: { token: string; 
             )}
         </div>
     );
-}
+};
+
+export default BookingListClient;

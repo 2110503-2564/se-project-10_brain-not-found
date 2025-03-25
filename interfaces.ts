@@ -36,7 +36,7 @@
     success: boolean,
     count: number,
     from: string,
-    data: ShopItem[]
+    data: ReservationItem[]
   }
 
   interface ReservationItem{

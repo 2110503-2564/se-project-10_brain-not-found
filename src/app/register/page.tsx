@@ -1,6 +1,10 @@
-"use client"
+// src/app/register/page.tsx
+"use client";
 import { useState } from "react";
-import userSignUp from "@/libs/userSignUp"; // Import ฟังก์ชันที่สร้างไว้
+import userSignUp from "@/libs/userSignUp";
+import { signIn } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Box, Button, Typography, TextField } from "@mui/material";
 
 export default function RegisterPage() {
     const [userName, setUserName] = useState("");
@@ -8,6 +12,9 @@ export default function RegisterPage() {
     const [userRole, setUserRole] = useState("user");
     const [userPassword, setUserPassword] = useState("");
     const [userTel, setUserTel] = useState("");
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const callbackUrl = searchParams.get("callbackUrl") || "/";
 
     const handleSignUp = async () => {
         try {
@@ -18,54 +25,66 @@ export default function RegisterPage() {
                 userPassword,
                 userTel,
             );
-            alert("Signup Successful!");
-            console.log(result)
-        } catch (error) {
-            alert("Signup Failed! " + (error as Error).message);
+            console.log(result);
+            // Sign in the user after successful registration
+            const signInResult = await signIn("credentials", {
+                email: userEmail,
+                password: userPassword,
+                redirect: false, // Prevent automatic redirect
+            });
+
+            if (signInResult?.error) {
+                alert("Login Failed! " + signInResult.error);
+            } else {
+                // Redirect to the banner page
+                router.push(callbackUrl);
+            }
+        } catch (error: any) {
+            alert("Signup Failed! " + error.message);
         }
     };
 
     return (
-        <div className="flex justify-center items-center min-h-screen bg-gray-100">
-            <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-lg">
-                <h2 className="text-2xl font-bold text-center text-blue-600 mb-6">Sign Up</h2>
-                <div className="space-y-4">
-                    <h2 className="text-xl font-bold text-blue-600">Name</h2>
-                    <input
+        <Box className="flex justify-center items-center min-h-screen bg-gray-100">
+            <Box className="w-full max-w-md p-6 bg-white rounded-lg shadow-lg">
+                <Typography className="text-2xl font-bold text-center text-blue-600 mb-6">Sign Up</Typography>
+                <Box className="space-y-4">
+                    <Typography className="text-xl font-bold text-blue-600">Name</Typography>
+                    <TextField
                         type="text"
                         placeholder="Name"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         onChange={(e) => setUserName(e.target.value)}
                     />
-                    <h2 className="text-xl font-bold text-blue-600">Email</h2>
-                    <input
+                    <Typography className="text-xl font-bold text-blue-600">Email</Typography>
+                    <TextField
                         type="email"
                         placeholder="Email"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         onChange={(e) => setUserEmail(e.target.value)}
                     />
-                    <h2 className="text-xl font-bold text-blue-600">Password</h2>
-                    <input
+                    <Typography className="text-xl font-bold text-blue-600">Password</Typography>
+                    <TextField
                         type="password"
                         placeholder="Password"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         onChange={(e) => setUserPassword(e.target.value)}
                     />
-                    <h2 className="text-xl font-bold text-blue-600">Telephone Number</h2>
-                    <input
+                    <Typography className="text-xl font-bold text-blue-600">Telephone Number</Typography>
+                    <TextField
                         type="text"
                         placeholder="Tel"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         onChange={(e) => setUserTel(e.target.value)}
                     />
-                </div>
-                <button
+                </Box>
+                <Button
                     onClick={handleSignUp}
                     className="w-full mt-6 py-2 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                     Register
-                </button>
-            </div>
-        </div>
+                </Button>
+            </Box>
+        </Box>
     );
 }

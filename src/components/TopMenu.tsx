@@ -23,23 +23,23 @@ export default async function TopMenu() {
       <div className="flex space-x-6">
         <TopMenuItem title="Home" link="/"/>
         <TopMenuItem title="About" link="/about" />
-        <TopMenuItem title="Massage" link="/shops" />
         <TopMenuItem title="My Booking" link="/mybooking" />
+        <TopMenuItem title="Massage" link="/shops"/>
       </div>
 
       <div className="flex items-center space-x-6">
         {session ? (
-          <Link href="/api/auth/signout">
+          <Link href={"/api/auth/signout"}>
             <div className="flex items-center gap-2 h-full px-4 bg-white rounded-2xl border border-blue-500 hover:bg-blue-500 hover:text-white">Sign-Out</div>
           </Link>
         ) : (
           <div className="flex items-center gap-6">
-            <Link href="/api/auth/signin">
+            <Link href={"/api/auth/signin?callbackUrl=/"}>
               <div className="flex items-center gap-2 h-full px-4 bg-white rounded-2xl border border-blue-500 hover:bg-blue-500 hover:text-white">
                 Sign-In
               </div>
             </Link>
-            <Link href="/register">
+            <Link href={"/register?callbackUrl=/"}>
               <div className="flex items-center gap-2 h-full px-4 bg-white rounded-2xl border border-blue-500 hover:bg-blue-500 hover:text-white">
                 Get Started
               </div>

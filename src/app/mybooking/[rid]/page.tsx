@@ -15,9 +15,9 @@ export default async function EditBookingPage({ params }: { params: { rid: strin
     if (!session || !session.user.token) redirect('/mybooking');
 
     const profile = await getUserProfile(session.user.token);
-    if (!profile) redirect('/mybooking');
-
     const reservation = await getReservation(session.user.token, params.rid);
+
+    if (!profile) redirect('/mybooking');
     if (!reservation) redirect('/mybooking');
 
     const shopId = reservation.data.shop.id;
@@ -126,7 +126,7 @@ export default async function EditBookingPage({ params }: { params: { rid: strin
                     </Typography>
                     <Grid container spacing={3} alignItems="center">
                         <Grid item xs={12} md={6}>
-                            <EditBookingForm session={session} shop={shop.data} reservationId={reservation.data.id}/>
+                            <EditBookingForm session={session} shop={shop.data} reservationId={params.rid}/>
                         </Grid>
                         <Grid item xs={12} md={6}>
                             <Box sx={{ textAlign: 'left' }}>
