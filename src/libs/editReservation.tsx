@@ -1,7 +1,7 @@
 export default async function editReservation(
     reservationId: string,
     updateData: Partial<{
-      reservationDate: string;
+      reservationDate: Date;
       shop: string;
     }>,
     token: string

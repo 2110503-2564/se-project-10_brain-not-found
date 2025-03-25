@@ -1,17 +1,19 @@
 'use client'
 import DateReserve from "@/components/DateReserve";
-import { TextField } from "@mui/material";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import dayjs, { Dayjs } from "dayjs";
-import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/redux/store";
-import { addBooking } from "@/redux/features/bookSlice";
 import createReservation from "@/libs/createReservation";
-import { getToken } from "next-auth/jwt";
-import { revalidateTag } from "next/cache";
-import { Session } from 'next-auth'; // Import Session type
+import { Session } from 'next-auth';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
+import Snackbar from '@mui/material/Snackbar';
+import { useRouter } from 'next/navigation';
+import IconButton from '@mui/material/IconButton';
+import CloseIcon from '@mui/icons-material/Close';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import { green } from '@mui/material/colors';
+import { useDispatch } from "react-redux";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -21,9 +23,24 @@ interface BookingFormProps {
     shop: ShopItem;
 }
 
-export default function BookingForm({ session , shop }: BookingFormProps) {
+export default function BookingForm({ session, shop }: BookingFormProps) {
     const dispatch = useDispatch<AppDispatch>();
     const [reserveDate, setReserveDate] = useState<Dayjs | null>(null);
+    const [openSnackbar, setOpenSnackbar] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState('');
+    const [isLoginRequired, setIsLoginRequired] = useState(false);
+    const router = useRouter();
+
+    // ตรวจสอบ session ทุกครั้งที่ session หรือ isLoginRequired เปลี่ยนแปลง
+    useEffect(() => {
+        if (session && !session.user) {
+            setIsLoginRequired(true);
+            setSnackbarMessage('You need to be logged in to make a booking.');
+            setOpenSnackbar(true);
+        } else if (session && session.user) {
+            setIsLoginRequired(false);
+        }
+    }, [session]);
 
     const handleDateChange = (value: Dayjs | null) => {
         setReserveDate(value);
@@ -31,31 +48,34 @@ export default function BookingForm({ session , shop }: BookingFormProps) {
 
     const makeBooking = async () => {
         if (session?.user) {
-            if(reserveDate){
-                // Subtract 7 hours from the selected time (temporary workaround)
+            if (reserveDate) {
                 const reservationDateWithOffset = reserveDate.add(7, 'hour').toDate();
-                // const reservationDateWithOffset = reserveDate.subtract(7, 'hour').toDate();
-
                 const booking: Reservationbody = {
                     reservationDate: reservationDateWithOffset,
                     user: session.user._id,
-                    shop: shop._id
+                    shop: shop._id,
+                    userName: session.user.name
                 };
-                console.log("Booking Data (with -7 hour offset):", booking);
                 try {
-                    console.log(session?.user?.token)
-                    const result = await createReservation({ token: session?.user?.token as string, Data: booking });
-                    console.log("Booking Result:", result);
-                    // dispatch(addBooking(booking));  // หากต้องการใช้ Redux
+                    const result = await createReservation({ token: session.user.token as string, Data: booking });
+                    setSnackbarMessage('Successful Reservation');
+                    setOpenSnackbar(true);
                 } catch (error) {
-                    console.error("Error creating booking:", error);
+                    setSnackbarMessage('Error Reservation');
+                    setOpenSnackbar(true);
                 }
             } else {
-                alert("Please select a reservation date and time.");
+                setSnackbarMessage('Please select a reservation date and time.');
+                setOpenSnackbar(true);
             }
         } else {
-            alert("Please Login First to make a booking.");
+            setIsLoginRequired(true); // useEffect จะจัดการ Snackbar ให้เอง
         }
+    };
+    
+
+    const handleGoToLogin = () => {
+        router.push('/api/auth/signin');
     };
 
     return (
@@ -65,26 +85,75 @@ export default function BookingForm({ session , shop }: BookingFormProps) {
                 <DateReserve
                     openTime={shop.openTime}
                     closeTime={shop.closeTime}
-                    onDateChange={(value: Dayjs | null) => {
-                        if (value) {
-                            console.log("onDateChange ===> " + value.toDate());
-                            setReserveDate(value);
-                        }
-                    }}
+                    onDateChange={handleDateChange}
                 />
             </div>
 
-            <button
-                className="block bg-blue-500 text-white rounded-md px-8 py-3 hover:bg-blue-600 shadow-2xl"
-                name="Book shop"
-                onClick={makeBooking}
-                disabled={!session?.user || !reserveDate}
+            <div className="w-full">
+                <button
+                    className={`block ${
+                        session?.user ? "bg-blue-500 hover:bg-blue-600" : "bg-gray-400 cursor-not-allowed"
+                    } text-white rounded-md px-8 py-3 shadow-2xl`}
+                    onClick={makeBooking}
+                    disabled={!session?.user || !reserveDate}
+                >
+                    Book this Massage Shop
+                </button>
+            </div>
+
+            {/* ข้อความแจ้งเตือนแสดงตลอด ไม่ว่าจะล็อกอินหรือไม่ */}
+            <div className="text-sm text-red-500 text-left flex items-center mt-2">
+                {!session?.user && (
+                    <p>You need to be logged in to make a booking.</p>
+                )}
+                {!session?.user && (
+                    <button className="ml-2 text-blue-500 underline" onClick={handleGoToLogin}>
+                        Login
+                    </button>
+                )}
+            </div>
+
+
+            <Snackbar
+                open={openSnackbar}
+                autoHideDuration={3000}
+                onClose={() => setOpenSnackbar(false)}
+                message={snackbarMessage}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                sx={{ backgroundColor: isLoginRequired ? 'red' : green[500] }}
             >
-                {session?.user ? "Book this Massage Shop" : "Login to Book"}
-            </button>
-            {!session?.user && (
-                <p className="text-sm text-gray-500 text-left">You need to be logged in to make a booking.</p>
-            )}
+                <div className="flex justify-between items-center">
+                    <h1 className="text-white text-center text-xl font-semibold shadow-md">
+                        {snackbarMessage}
+                    </h1>
+
+                    <IconButton
+                        size="small"
+                        onClick={() => setOpenSnackbar(false)}
+                        sx={{ color: 'white' }}
+                    >
+                        <CloseIcon />
+                    </IconButton>
+
+                    {isLoginRequired ? (
+                        <IconButton
+                            size="small"
+                            onClick={handleGoToLogin}
+                            sx={{ color: 'white' }}
+                        >
+                            <ArrowForwardIcon />
+                        </IconButton>
+                    ) : (
+                        <IconButton
+                            size="small"
+                            onClick={() => router.push('/mybooking')}
+                            sx={{ color: 'white' }}
+                        >
+                            <ArrowForwardIcon />
+                        </IconButton>
+                    )}
+                </div>
+            </Snackbar>
         </div>
     );
 }

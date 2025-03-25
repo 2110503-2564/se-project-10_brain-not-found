@@ -2,7 +2,7 @@
 import BookingListClient from "./BookingListClient";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 import { getServerSession } from "next-auth/next";
-import getReservations from "@/libs/getReservation";
+import getReservations from "@/libs/getReservations";
 import { removeBooking } from "@/redux/features/bookSlice";
 import deleteReservation from "@/libs/deleteReservation";
 import { AppDispatch } from "@/redux/store";
