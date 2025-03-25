@@ -31,7 +31,27 @@ export default function EditBookingForm({ session, shop, reservationId }: Bookin
     const [isDialogOpen, setIsDialogOpen] = useState(false); // Dialog open state
 
     const handleDateChange = (value: Dayjs | null) => {
-        setReserveDate(value);
+        if (!value) {
+            setReserveDate(null);
+            return;
+        }
+    
+        const openHour = parseInt(shop.openTime.split(':')[0], 10);
+        const closeHour = parseInt(shop.closeTime.split(':')[0], 10);
+    
+        // ตรวจสอบกรณีข้ามวัน
+        if (closeHour < openHour) {
+            const selectedHour = value.hour();
+            
+            if (selectedHour >= 0 && selectedHour < closeHour) {
+                // ถ้าเลือกเวลาเป็นหลังเที่ยงคืน (00:00 - 02:59) ให้เลื่อนไปวันก่อนหน้า
+                setReserveDate(value.subtract(1, 'day'));
+            } else {
+                setReserveDate(value);
+            }
+        } else {
+            setReserveDate(value);
+        }
     };
 
     const editBooking = () => {

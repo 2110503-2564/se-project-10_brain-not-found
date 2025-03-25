@@ -11,16 +11,19 @@ export default function DateReserve({
   closeTime,
 }: {
   onDateChange: (value: Dayjs | null) => void;
-  openTime: string; // เช่น "09:00"
-  closeTime: string; // เช่น "18:00"
+  openTime: string; // เช่น "23:00"
+  closeTime: string; // เช่น "03:00"
 }) {
   const [reserveDate, setReserveDate] = useState<Dayjs | null>(null);
-    const open = dayjs(openTime, 'HH:mm');
-    const close = dayjs(closeTime, 'HH:mm');
+
+  const open = dayjs().set('hour', parseInt(openTime.split(':')[0])).set('minute', parseInt(openTime.split(':')[1]));
+  const close = dayjs().set('hour', parseInt(closeTime.split(':')[0])).set('minute', parseInt(closeTime.split(':')[1]));
+
+  // ตรวจสอบว่าร้านเปิดข้ามวันหรือไม่
+  const isOvernight = close.isBefore(open);
 
   const handleDateChange = (value: Dayjs | null) => {
     if (value) {
-      // console.log("handleChange ::: "+ value.toDate());
       setReserveDate(value);
       onDateChange(value);
     }
@@ -34,22 +37,25 @@ export default function DateReserve({
           <DateTimePicker
             label="Choose a date"
             value={reserveDate}
-            onChange={(value)=>handleDateChange(value)}
+            onChange={handleDateChange}
             disablePast
-            ampm={false} // ใช้เวลาในรูปแบบ 24 ชั่วโมง
-            views={['day', 'hours', 'minutes']} // แสดงวันที่, ชั่วโมง และนาที
+            ampm={false}
+            views={['day', 'hours', 'minutes']}
             shouldDisableTime={(time, view) => {
               if (view === 'hours' || view === 'minutes') {
-                // ถ้ายังไม่ได้เลือกวัน จะไม่จำกัดเวลา
                 if (!reserveDate) return false;
 
-                // สร้าง dayjs object สำหรับเวลาเลือกในวันนี้
-                const selectedTimeToday = dayjs()
+                const selectedTime = dayjs()
                   .set('hour', time.hour())
                   .set('minute', time.minute());
 
-                // ตรวจสอบว่าเวลาเลือกนั้นอยู่ในช่วงที่กำหนดหรือไม่
-                return selectedTimeToday.isBefore(open) || selectedTimeToday.isAfter(close);
+                if (isOvernight) {
+                  // กรณีเปิดข้ามวัน (เช่น 23:00 - 03:00)
+                  return !(selectedTime.isAfter(open) || selectedTime.isBefore(close));
+                } else {
+                  // กรณีปกติ (เช่น 09:00 - 18:00)
+                  return selectedTime.isBefore(open) || selectedTime.isAfter(close);
+                }
               }
               return false;
             }}
