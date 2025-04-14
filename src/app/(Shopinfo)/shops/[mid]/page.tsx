@@ -3,17 +3,13 @@ import getVenue from "@/libs/getShop";
 import BookingForm from "@/components/BookingForm";
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
-import { Paper, Typography, Grid, Box, Divider } from "@mui/material";
+import { Paper, Typography, Grid, Box, Divider, LinearProgress } from "@mui/material";
 import { orange, grey } from "@mui/material/colors";
 import { Suspense } from "react";
 
-export default async function ShopDetailPage({ params }: { params: { mid: string } }) {
-    const shopDetail = await getVenue(params.mid);
-    const session = await getServerSession(authOptions);
-
-    if (!shopDetail || !shopDetail.data) {
-        return (
-            <Box
+export default function ShopDetailPage({ params }: { params: { mid: string } }) {
+    return (
+        <Box
                 sx={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -24,66 +20,94 @@ export default async function ShopDetailPage({ params }: { params: { mid: string
                     padding: 4,
                 }}
             >
-                <Typography variant="h4" component="h1" align="center" gutterBottom sx={{ color: orange[800], fontWeight: 'bold' }}>
-                    Shop Not Found
-                </Typography>
-            </Box>
+            <Suspense fallback={<LinearProgress/>}>
+                <ShopDetail shopId={params.mid}/>
+            </Suspense>   
+        </Box>
+    )
+        
+}
+
+async function ShopDetail({shopId} :{shopId: string}) {
+    try {
+
+    const [shopDetail, session] = await Promise.all([getVenue(shopId), getServerSession(authOptions)]); 
+
+    if (!shopDetail || !shopDetail.data) { // most likely inaccessible because API returns 404
+        return (
+            <Typography variant="h4" component="h1" align="center" gutterBottom sx={{ color: orange[800], fontWeight: 'bold' }}>
+                Shop Not Found
+            </Typography>
         );
     }
 
     return (
-        <Box
-            sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                minHeight: '100vh',
-                bgcolor: grey[100],
-                padding: 4,
-            }}
+      <Paper
+        elevation={3}
+        sx={{
+          width: "90%",
+          maxWidth: 1200,
+          padding: 4,
+          borderRadius: 4,
+          bgcolor: "white",
+        }}
+      >
+        <Typography
+          variant="h4"
+          component="h1"
+          align="center"
+          gutterBottom
+          sx={{ color: orange[800], fontWeight: "bold" }}
         >
-            <Paper
-                elevation={3}
-                sx={{
-                    width: '90%',
-                    maxWidth: 1200,
-                    padding: 4,
-                    borderRadius: 4,
-                    bgcolor: 'white',
-                }}
-            >
-                <Typography variant="h4" component="h1" align="center" gutterBottom sx={{ color: orange[800], fontWeight: 'bold' }}>
-                    Massage Shop Detail
-                </Typography>
+          Massage Shop Detail
+        </Typography>
 
-                <Grid container spacing={3} alignItems="center">
-                    {/* Larger Image Column */}
-                    <Grid item xs={12} md={4}>
-                        <ShopImage src={shopDetail.data.picture} alt={shopDetail.data.name}/>
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                        <ShopImage src={shopDetail.data.picture} alt={shopDetail.data.name}/>
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                        <ShopImage src={shopDetail.data.picture} alt={shopDetail.data.name}/>
-                    </Grid>
-                    {/* Smaller Detail Column */}
-                    <Grid item xs={12} md={6}>
-                        <ShopInfo info={shopDetail.data}/>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                        <Box sx={{ padding: 3}}alignSelf={"flex-end"}>
-                            <BookingForm session={session} shop={shopDetail.data} />
-                        </Box>
-                    </Grid>
-                </Grid>
+        <Grid container spacing={3} alignItems="center">
+          {/* Larger Image Column */}
+          <Grid item xs={12} md={4}>
+            <ShopImage
+              src={shopDetail.data.picture}
+              alt={shopDetail.data.name}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <ShopImage
+              src={shopDetail.data.picture}
+              alt={shopDetail.data.name}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <ShopImage
+              src={shopDetail.data.picture}
+              alt={shopDetail.data.name}
+            />
+          </Grid>
+          {/* Smaller Detail Column */}
+          <Grid item xs={12} md={6}>
+            <ShopInfo info={shopDetail.data} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Box sx={{ padding: 3 }} alignSelf={"flex-end"}>
+              <BookingForm session={session} shop={shopDetail.data} />
+            </Box>
+          </Grid>
+        </Grid>
+        <Divider sx={{ my: 4, borderColor: orange[300] }} />
+      </Paper>
+    );
 
-                <Divider sx={{ my: 4, borderColor: orange[300] }} />
-
-            </Paper>
-        </Box>
+} catch (error) {
+    return (
+        <Typography variant="h4" component="h1" align="center" gutterBottom sx={{ color: orange[800], fontWeight: 'bold' }}>
+            An error has occured
+        </Typography>
     );
 }
+
+}
+
+
+
 
 
 function ShopImage({src, alt} : {src: string, alt: string}) {
