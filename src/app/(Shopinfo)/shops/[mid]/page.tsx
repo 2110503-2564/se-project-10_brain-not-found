@@ -20,9 +20,21 @@ export default function ShopDetailPage({ params }: { params: { mid: string } }) 
                     padding: 4,
                 }}
             >
+              <Paper
+        elevation={3}
+        sx={{
+          width: "90%",
+          maxWidth: 1200,
+          padding: 4,
+          borderRadius: 4,
+          bgcolor: "white",
+        }}
+              >
             <Suspense fallback={<LinearProgress/>}>
                 <ShopDetail shopId={params.mid}/>
-            </Suspense>   
+            </Suspense>
+            <Divider sx={{ my: 4, borderColor: orange[300] }} />
+            </Paper>   
         </Box>
     )
         
@@ -42,16 +54,7 @@ async function ShopDetail({shopId} :{shopId: string}) {
     }
 
     return (
-      <Paper
-        elevation={3}
-        sx={{
-          width: "90%",
-          maxWidth: 1200,
-          padding: 4,
-          borderRadius: 4,
-          bgcolor: "white",
-        }}
-      >
+        <>
         <Typography
           variant="h4"
           component="h1"
@@ -92,8 +95,7 @@ async function ShopDetail({shopId} :{shopId: string}) {
             </Box>
           </Grid>
         </Grid>
-        <Divider sx={{ my: 4, borderColor: orange[300] }} />
-      </Paper>
+        </>
     );
 
 } catch (error) {
