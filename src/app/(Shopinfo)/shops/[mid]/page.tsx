@@ -6,6 +6,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
 import { Paper, Typography, Grid, Box, Divider, LinearProgress } from "@mui/material";
 import { orange, grey } from "@mui/material/colors";
 import { Suspense } from "react";
+import { ReviewPage } from "@/components/Review";
 
 export default function ShopDetailPage({ params }: { params: { mid: string } }) {
     return (
@@ -34,6 +35,7 @@ export default function ShopDetailPage({ params }: { params: { mid: string } }) 
                 <ShopDetail shopId={params.mid}/>
             </Suspense>
             <Divider sx={{ my: 4, borderColor: orange[300] }} />
+            <ReviewPage shopId={params.mid}/>
             </Paper>   
         </Box>
     )
