@@ -1,4 +1,18 @@
+ interface Review { // subject to changes
+  _id: string,
+  header: string,
+  comment: string,
+  rating: number,
+  shop: string,
+  user: {name: string},
+  createdAt: Date,
+ }
 
+ interface ReviewJson {
+  success: boolean,
+  count: number,
+  data: Review[]
+ }
 
  interface ShopItem {
     _id: string,
