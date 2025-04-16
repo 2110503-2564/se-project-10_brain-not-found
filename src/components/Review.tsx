@@ -46,13 +46,13 @@ export function ReviewCard({data} : {data: Review}) {
         <>
         <Stack spacing={1} sx={{ overflowWrap: 'break-word' }}>
 
-            <Stack direction='row' spacing={2}>
+            <Stack direction='row' spacing={2} width='75%'>
                 <Avatar sx={{ width: 50, height: 50 }}/>
-                <Stack>
+                <Stack flexGrow='1'>
                     <Rating value={data.rating} readOnly/>
-                    <Stack direction='row' spacing={2} alignItems='baseline'>
+                    <Stack direction='row' spacing={1} alignItems='baseline' flexWrap='wrap'>
                         <Typography variant="h6" sx={{fontWeight: 'semi-bold'}}>{data.user.name}</Typography>
-                        <Typography variant="caption">{date}</Typography>
+                        <Typography variant="caption" sx={{fontSize: '0.625rem'}}>{date}</Typography>
                     </Stack>    
                 </Stack>
                 <ReviewMenu/> {/* TODO: implement working buttons */}
@@ -61,7 +61,7 @@ export function ReviewCard({data} : {data: Review}) {
             <Typography variant="h5" component="h3" sx={{fontWeight: 'bold' }}>
                 {data.header}
             </Typography>
-            <Typography variant="body1" sx={{width: '75%'}}>
+            <Typography variant="body1" width='75%'>
                 {data.comment}
             </Typography>
 
