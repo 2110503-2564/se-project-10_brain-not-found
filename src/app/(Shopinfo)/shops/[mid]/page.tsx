@@ -121,7 +121,6 @@ function ShopImage({src, alt} : {src: string, alt: string}) {
           borderRadius: 2,
           overflow: "hidden",
           boxShadow: 2,
-          // Add max height for image
           maxHeight: 350, // Adjust as needed
           maxWidth: 350,
         }}
@@ -132,7 +131,7 @@ function ShopImage({src, alt} : {src: string, alt: string}) {
           width={0}
           height={0}
           sizes="100vw"
-          style={{ width: "auto", height: "auto", objectFit: "cover" }} // Add objectFit
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
         />
       </Box>
     );
