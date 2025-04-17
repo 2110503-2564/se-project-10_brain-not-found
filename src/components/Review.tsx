@@ -1,34 +1,14 @@
 import { Avatar, Box, Grid, IconButton, Pagination, Rating, Skeleton, Stack, Typography } from "@mui/material";
 import { grey } from "@mui/material/colors";
-import { MoreVerticalIcon } from "lucide-react";
 import { ReviewMenu } from "./ReviewClient";
 
-export function ReviewPage({shopId} : {shopId: string}) {
+export function ReviewSection({shopId} : {shopId: string}) {
     
-    const mockReviewData : Review[] = [
-        {_id: "1", header: "test 1", comment: "placeholder 1", rating: 2, shop: "test1",
-        user: {name:"John Doe"}, createdAt: new Date(Date.now())},
-        {_id: "2", header: "test 2", comment: "placeholder 222", rating: 4, shop: "test1",
-            user: {name:"Jane Doe"}, createdAt: new Date(Date.now())},
-        {_id: "3", header: "test 3", comment: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", rating: 5, shop: "test1",
-            user: {name:"John Cena"}, createdAt: new Date(Date.now())},
-    ]
-
-    /*if (ReviewData.count === 0) {return (
-        <>
-        <Stack spacing={2}>
-            <Typography variant="h5" component="h2" sx={{ fontWeight:'bold' }}>Reviews</Typography>
-            <Typography variant="h6" sx={{ color: grey[500] }}>No reviews found</Typography>
-        </Stack> 
-        </>
-    )} */
-
-
     return (
         <>
         <Stack spacing={4}>
             <Typography variant="h5" component="h2" sx={{ fontWeight:'bold' }}>Reviews</Typography>
-            {mockReviewData.map((review) => ( <ReviewCard data={review} key={review._id}/>))}
+            <ReviewList page={1}/>
             <ReviewSkeleton/>
             {/* TODO: Implement create review form */}
             <Box alignSelf='center'>
@@ -39,7 +19,33 @@ export function ReviewPage({shopId} : {shopId: string}) {
     )
 }
 
-export function ReviewCard({data} : {data: Review}) {
+function ReviewList({page} : {page: number}) {
+
+    const ReviewData : Review[] = [
+        {_id: "1", header: "test 1", comment: "placeholder 1", rating: 2, shop: "test1",
+        user: {name:"John Doe"}, createdAt: new Date(Date.now())},
+        {_id: "2", header: "test 2", comment: "placeholder 222", rating: 4, shop: "test1",
+            user: {name:"Jane Doe"}, createdAt: new Date(Date.now())},
+        {_id: "3", header: "test 3", comment: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", rating: 5, shop: "test1",
+            user: {name:"John Cena"}, createdAt: new Date(Date.now())},
+    ]
+
+    if (ReviewData.length === 0) {
+        return (
+            <>
+            <Typography variant="h6" sx={{ color: grey[500] }}>No reviews found</Typography>
+            </>
+        )
+    } 
+
+    return (
+        <>
+        {ReviewData.map((review) => ( <ReviewCard data={review} key={review._id}/>))}
+        </>
+    )
+}
+
+function ReviewCard({data} : {data: Review}) {
 
     const date = data.createdAt.toLocaleString();
     return (
