@@ -40,7 +40,9 @@
     closeTime:string,
     __v: number,
     reservations?: Array<Reservationbody>,
-    reviews?: Review[]
+    reviews?: Review[],
+    reviewCount?: number,
+    averageRating?: number,
     desc: string,
     id: string
   }
