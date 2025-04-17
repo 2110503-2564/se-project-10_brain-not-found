@@ -1,6 +1,7 @@
 import { Avatar, Box, Grid, IconButton, Pagination, Rating, Skeleton, Stack, Typography } from "@mui/material";
 import { grey } from "@mui/material/colors";
 import { ReviewMenu } from "./ReviewClient";
+import getReviews from "@/libs/getReviews";
 
 export function ReviewSection({shopId} : {shopId: string}) {
     
@@ -8,8 +9,7 @@ export function ReviewSection({shopId} : {shopId: string}) {
         <>
         <Stack spacing={4}>
             <Typography variant="h5" component="h2" sx={{ fontWeight:'bold' }}>Reviews</Typography>
-            <ReviewList page={1}/>
-            <ReviewSkeleton/>
+            <ReviewList shopId={shopId} page={1}/>
             {/* TODO: Implement create review form */}
             <Box alignSelf='center'>
                 <Pagination count={3} color="primary"/> {/* TODO: Implement working pagination system */}
@@ -19,18 +19,11 @@ export function ReviewSection({shopId} : {shopId: string}) {
     )
 }
 
-function ReviewList({page} : {page: number}) {
+async function ReviewList({page, shopId} : {page: number, shopId: string}) {
 
-    const ReviewData : Review[] = [
-        {_id: "1", header: "test 1", comment: "placeholder 1", rating: 2, shop: "test1",
-        user: {name:"John Doe"}, createdAt: new Date(Date.now())},
-        {_id: "2", header: "test 2", comment: "placeholder 222", rating: 4, shop: "test1",
-            user: {name:"Jane Doe"}, createdAt: new Date(Date.now())},
-        {_id: "3", header: "test 3", comment: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", rating: 5, shop: "test1",
-            user: {name:"John Cena"}, createdAt: new Date(Date.now())},
-    ]
+    const reviews : ReviewJson = await getReviews(shopId, page);
 
-    if (ReviewData.length === 0) {
+    if (reviews.count === 0) {
         return (
             <>
             <Typography variant="h6" sx={{ color: grey[500] }}>No reviews found</Typography>
@@ -40,16 +33,16 @@ function ReviewList({page} : {page: number}) {
 
     return (
         <>
-        {ReviewData.map((review) => ( <ReviewCard data={review} key={review._id}/>))}
+        {reviews.data.map((review) => ( <ReviewCard data={review} key={review._id}/>))}
         </>
     )
 }
 
 function ReviewCard({data} : {data: Review}) {
 
-    const createdDate = data.createdAt.toLocaleString();
-    const editedDate = data.edited?.toLocaleString();
-    const date = editedDate? `${createdDate} ${editedDate}` : createdDate;
+    const createdDate = new Date(data.createdAt).toLocaleString(undefined, {hour12: false});
+    const editedDate = data.edited? new Date(data.edited).toLocaleString(undefined, {hour12: false}) : undefined;
+    const date = editedDate? `${createdDate} (edited: ${editedDate})` : createdDate;
     
     return (
         <>

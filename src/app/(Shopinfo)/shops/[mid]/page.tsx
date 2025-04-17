@@ -6,7 +6,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
 import { Paper, Typography, Grid, Box, Divider, LinearProgress } from "@mui/material";
 import { orange, grey } from "@mui/material/colors";
 import { Suspense } from "react";
-import { ReviewSection } from "@/components/Review";
+import { ReviewSection, ReviewSkeleton } from "@/components/Review";
 
 export default function ShopDetailPage({ params }: { params: { mid: string } }) {
     return (
@@ -32,10 +32,12 @@ export default function ShopDetailPage({ params }: { params: { mid: string } }) 
         }}
               >
             <Suspense fallback={<LinearProgress/>}>
-                <ShopDetail shopId={params.mid}/>
+              <ShopDetail shopId={params.mid}/>
             </Suspense>
             <Divider sx={{ my: 4, borderColor: orange[300] }} />
-            <ReviewSection shopId={params.mid}/>
+            <Suspense fallback={<ReviewSkeleton/>}>
+              <ReviewSection shopId={params.mid}/>
+            </Suspense>
             </Paper>   
         </Box>
     )
