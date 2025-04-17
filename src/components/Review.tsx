@@ -47,7 +47,10 @@ function ReviewList({page} : {page: number}) {
 
 function ReviewCard({data} : {data: Review}) {
 
-    const date = data.createdAt.toLocaleString();
+    const createdDate = data.createdAt.toLocaleString();
+    const editedDate = data.edited?.toLocaleString();
+    const date = editedDate? `${createdDate} ${editedDate}` : createdDate;
+    
     return (
         <>
         <Stack spacing={1} sx={{ overflowWrap: 'break-word' }}>
