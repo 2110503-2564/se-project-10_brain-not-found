@@ -21,6 +21,11 @@
   prev?: {page: number, limit: number}
  }
 
+ interface ErrorJSON {
+  success: boolean,
+  message: string
+ }
+
  interface ShopItem {
     _id: string,
     name: string,
