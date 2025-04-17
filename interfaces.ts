@@ -6,12 +6,19 @@
   shop: string,
   user: {name: string},
   createdAt: Date,
+  edited?: Date
  }
 
  interface ReviewJson {
   success: boolean,
   count: number,
+  pagination: Pagination
   data: Review[]
+ }
+
+ interface Pagination {
+  next?: {page: number, limit: number},
+  prev?: {page: number, limit: number}
  }
 
  interface ShopItem {
@@ -27,8 +34,9 @@
     openTime:string,
     closeTime:string,
     __v: number,
-    reservations:Array<Reservationbody>,
-    desc: string
+    reservations?: Array<Reservationbody>,
+    reviews?: Review[]
+    desc: string,
     id: string
   }
   
