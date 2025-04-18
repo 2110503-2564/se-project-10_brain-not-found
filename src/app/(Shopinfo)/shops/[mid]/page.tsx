@@ -22,7 +22,7 @@ export default function ShopDetailPage({ params }: { params: { mid: string } }) 
                     padding: 4,
                 }}
             >
-              <Paper
+          <Paper
         elevation={3}
         sx={{
           width: "90%",
@@ -39,7 +39,7 @@ export default function ShopDetailPage({ params }: { params: { mid: string } }) 
             <Suspense fallback={<ReviewSkeleton/>}>
               <ReviewSection shopId={params.mid}/>
             </Suspense>
-            </Paper>   
+          </Paper>   
         </Box>
     )
         
@@ -113,10 +113,6 @@ async function ShopDetail({shopId} :{shopId: string}) {
 
 }
 
-
-
-
-
 function ShopImage({src, alt} : {src: string, alt: string}) {
   
     return (
@@ -142,6 +138,21 @@ function ShopImage({src, alt} : {src: string, alt: string}) {
 }
 
 function ShopInfo({info} : {info: ShopItem}) {
+
+  function ReviewCount({count} : {count?: number}) {
+
+    if (typeof count === undefined) {
+      return (<Typography variant="subtitle2">No Data</Typography>)
+    }
+
+    if (typeof count === "number" && count <= 1) {
+      return (<Typography variant="subtitle2">{`(${count} review)`}</Typography>)
+    } 
+
+    return (<Typography variant="subtitle2">{`(${count} reviews)`}</Typography>)
+    
+  }
+
     return (
       <Box sx={{ textAlign: "left", padding: 2 }}>
         <Typography
@@ -151,12 +162,17 @@ function ShopInfo({info} : {info: ShopItem}) {
         >
           {info.name}
         </Typography>
-        <Stack direction="row" spacing={1} alignItems='center' justifyContent='center' width='fit-content' sx={{
-          backgroundColor: yellow,
-          borderRadius: "8px"
-        }}>
-          <Star size={20} color="#000000" strokeWidth={0.75} />
-          <Typography variant="body1">{info.averageRating}</Typography>
+        <Stack direction="row" spacing={0.75} alignItems="center" width='fit-content'>
+          <Stack direction="row" spacing={1} alignItems='center' justifyContent='center' sx={{
+          backgroundColor: yellow[300],
+          borderRadius: "8px",
+          paddingX: "6px",
+          paddingY: "2px",
+          }}>
+            <Star size={20} color="#000000" strokeWidth={1.25} />
+            <Typography variant="body1">{info.averageRating}</Typography>
+          </Stack>
+          <ReviewCount count={info.reviewCount}/>
         </Stack>
         <Typography variant="body1" sx={{ color: grey[800] }}>
           <b>Address:</b> {info.address}
