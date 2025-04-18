@@ -3,10 +3,11 @@ import getVenue from "@/libs/getShop";
 import BookingForm from "@/components/BookingForm";
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
-import { Paper, Typography, Grid, Box, Divider, LinearProgress } from "@mui/material";
-import { orange, grey } from "@mui/material/colors";
+import { Paper, Typography, Grid, Box, Divider, LinearProgress, Stack } from "@mui/material";
+import { orange, grey, yellow } from "@mui/material/colors";
 import { Suspense } from "react";
 import { ReviewSection, ReviewSkeleton } from "@/components/Review";
+import { Star } from "lucide-react";
 
 export default function ShopDetailPage({ params }: { params: { mid: string } }) {
     return (
@@ -117,6 +118,7 @@ async function ShopDetail({shopId} :{shopId: string}) {
 
 
 function ShopImage({src, alt} : {src: string, alt: string}) {
+  
     return (
       <Box
         sx={{
@@ -128,7 +130,7 @@ function ShopImage({src, alt} : {src: string, alt: string}) {
         }}
       >
         <Image
-          src={src ?? "/img/logo.png"}
+          src={src.toString() ?? "/img/logo.png"}
           alt={alt}
           width={0}
           height={0}
@@ -149,6 +151,13 @@ function ShopInfo({info} : {info: ShopItem}) {
         >
           {info.name}
         </Typography>
+        <Stack direction="row" spacing={1} alignItems='center' justifyContent='center' width='fit-content' sx={{
+          backgroundColor: yellow,
+          borderRadius: "8px"
+        }}>
+          <Star size={20} color="#000000" strokeWidth={0.75} />
+          <Typography variant="body1">{info.averageRating}</Typography>
+        </Stack>
         <Typography variant="body1" sx={{ color: grey[800] }}>
           <b>Address:</b> {info.address}
         </Typography>
