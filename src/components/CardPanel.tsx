@@ -62,7 +62,7 @@ export default function CardPanel(){
                     {
                         CardResponse.data.map((cardItem:ShopItem)=>
                         <Link href={`/Shop/${cardItem.id}`} className="w-1/5" key={cardItem.id}>
-                        <Card shopName={cardItem.name} imgSrc={cardItem.picture} desc={cardItem.desc}
+                        <Card shopName={cardItem.name} imgSrc={cardItem.picture[0]} desc={cardItem.desc}
                             onCompare={(Shop:string ,rating:number|undefined)=>
                                 dispatchCompare({type:"add", ShopName:Shop , rating})}
                         />
