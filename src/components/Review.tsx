@@ -15,7 +15,15 @@ export function ReviewSection({ shopId }: { shopId: string }) {
     const [reviews, setReviews] = useState<Review[]>([]);
     const [loadingReviews, setLoadingReviews] = useState(true);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [page, setPage] = useState(1); // current page
+    const [totalReviews, setTotalReviews] = useState(0);
+    const limit = 5;
     const { data: session } = useSession();
+
+    const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+      setPage(value);
+    };
+
     const handleDelete = (id: string) => {
         setRefreshTrigger(prev => prev + 1);
       };
@@ -24,12 +32,13 @@ export function ReviewSection({ shopId }: { shopId: string }) {
     useEffect(() => {
       const fetchReviews = async () => {
         setLoadingReviews(true);
-        const data = await getReviews(shopId, 1);
+        const data = await getReviews(shopId, page);
+        setTotalReviews(data.count);
         setReviews(data.data);
         setLoadingReviews(false);
       };
       fetchReviews();
-    }, [shopId, refreshTrigger]);
+    }, [shopId, refreshTrigger, page]);
   
     const handleSubmit = async () => {
       if (!session?.user || !session.user.token || rating === null) return;
@@ -55,6 +64,12 @@ export function ReviewSection({ shopId }: { shopId: string }) {
         setSubmitting(false);
       }
     };
+
+    const totalPages = Math.ceil(totalReviews / limit);
+    // debug
+    // console.log("Total Reviews:", totalReviews);
+    // console.log("Limit:", limit);
+    // console.log("Calculated Page Count:", totalPages);
   
     return (
       <Stack spacing={4}>
@@ -111,7 +126,7 @@ export function ReviewSection({ shopId }: { shopId: string }) {
         </Stack>
   
         <Box alignSelf="center">
-          <Pagination count={3} color="primary" />
+          <Pagination count={totalPages} page={page} onChange={handlePageChange} color="primary" />
         </Box>
       </Stack>
     );
