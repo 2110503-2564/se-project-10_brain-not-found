@@ -82,7 +82,8 @@ export function ReviewMenu({
         updatedData: {
           header,
           comment,
-          rating
+          rating,
+          edited: new Date().toISOString()
         }
       })
       onEditSuccess?.()

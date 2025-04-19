@@ -94,6 +94,7 @@ export function ReviewSection({ shopId }: { shopId: string }) {
                   key={review._id}
                   shopId={shopId}
                   onDelete={handleDelete}
+                  onEdit={()=> setRefreshTrigger(prev=> prev+1)}
                 />
               ))
               
@@ -150,12 +151,12 @@ async function ReviewList({page, shopId} : {page: number, shopId: string}) {
 
     return (
         <>
-        {reviews.data.map((review) => ( <ReviewCard data={review} key={review._id} shopId={shopId} onDelete={()=>{}}/>))}
+        {reviews.data.map((review) => ( <ReviewCard data={review} key={review._id} shopId={shopId} onDelete={()=>{}} onEdit={()=>{}}/>))}
         </>
     )
 }
 
-function ReviewCard({ data, shopId, onDelete }: { data: Review, shopId: string, onDelete: (id: string) => void }) {
+function ReviewCard({ data, shopId, onDelete, onEdit }: { data: Review, shopId: string, onDelete: (id: string) => void, onEdit: ()=> void }) {
     const createdDate = new Date(data.createdAt).toLocaleString(undefined, { hour12: false });
     const editedDate = data.edited ? new Date(data.edited).toLocaleString(undefined, { hour12: false }) : undefined;
     const date = editedDate ? `${createdDate} (edited: ${editedDate})` : createdDate;
@@ -176,6 +177,10 @@ function ReviewCard({ data, shopId, onDelete }: { data: Review, shopId: string, 
             reviewOwnerId={data.user._id}
             shopId={shopId}
             onDeleteSuccess={() => onDelete(data._id)}
+            onEditSuccess={onEdit}
+            currentRating={data.rating}
+            currentHeader={data.header}
+            currentComment={data.comment}
           />
         </Stack>
   
