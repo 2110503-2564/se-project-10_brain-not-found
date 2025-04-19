@@ -33,7 +33,7 @@ export function ReviewSection({ shopId }: { shopId: string }) {
       const fetchReviews = async () => {
         setLoadingReviews(true);
         const data = await getReviews(shopId, page);
-        setTotalReviews(data.count);
+        setTotalReviews(data.totalReviews);
         setReviews(data.data);
         setLoadingReviews(false);
       };
