@@ -30,13 +30,10 @@ export function ReviewSection({ shopId }: { shopId: string }) {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [page, setPage] = useState(1);
   const [totalReviews, setTotalReviews] = useState(0);
+  const [hasReviewed, setHasReviewed] = useState(false);
+  const [checkedReview, setCheckedReview] = useState(false);
   const limit = 5;
   const { data: session } = useSession();
-
-  // Determine if the logged-in user has already submitted a review.
-  // Assumes that session.user.id exists and each review's user contains _id.
-  const hasReviewed =
-    session?.user?._id && reviews.some(review => review.user._id === session.user._id);
 
   const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
@@ -46,32 +43,37 @@ export function ReviewSection({ shopId }: { shopId: string }) {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  // Load reviews and convert createdAt and edited to strings if they are Date objects.
   useEffect(() => {
     const fetchReviews = async () => {
       setLoadingReviews(true);
       const data = await getReviews(shopId, page);
       setTotalReviews(data.totalReviews);
-      // Ensure that createdAt (and edited) are stored as strings.
-      setReviews(
-        data.data.map((review: any) => ({
-          ...review,
-          createdAt:
-            typeof review.createdAt === "string"
-              ? review.createdAt
-              : new Date(review.createdAt).toISOString(),
-          edited:
-            review.edited
-              ? typeof review.edited === "string"
-                ? review.edited
-                : new Date(review.edited).toISOString()
-              : undefined,
-        }))
-      );
+
+      const newReviews = data.data.map((review: any) => ({
+        ...review,
+        createdAt:
+          typeof review.createdAt === "string"
+            ? review.createdAt
+            : new Date(review.createdAt).toISOString(),
+        edited:
+          review.edited
+            ? typeof review.edited === "string"
+              ? review.edited
+              : new Date(review.edited).toISOString()
+            : undefined,
+      }));
+
+      setReviews(newReviews);
       setLoadingReviews(false);
+
+      if (session?.user?._id && page === 1 && !checkedReview) {
+        const found = newReviews.some(review => review.user._id === session.user._id);
+        setHasReviewed(found);
+        setCheckedReview(true);
+      }
     };
     fetchReviews();
-  }, [shopId, refreshTrigger, page]);
+  }, [shopId, refreshTrigger, page, session?.user?._id, checkedReview]);
 
   const handleSubmit = async () => {
     if (!session?.user || !session.user.token || rating === null) return;
@@ -89,7 +91,8 @@ export function ReviewSection({ shopId }: { shopId: string }) {
         setComment("");
         setRating(0);
         alert("Review submitted successfully!");
-        setRefreshTrigger(prev => prev + 1); // Refresh review list
+        setHasReviewed(true);
+        setRefreshTrigger(prev => prev + 1);
       }
     } catch (err: any) {
       alert(err.message);
@@ -163,25 +166,6 @@ export function ReviewSection({ shopId }: { shopId: string }) {
   );
 }
 
-async function ReviewList({ page, shopId }: { page: number; shopId: string }) {
-  const reviews: any = await getReviews(shopId, page);
-
-  if (reviews.count === 0) {
-    return (
-      <Typography variant="h6" sx={{ color: grey[500] }}>
-        No reviews found
-      </Typography>
-    );
-  }
-
-  return (
-    <>
-      {reviews.data.map((review: any) => (
-        <ReviewCard data={review} key={review._id} shopId={shopId} onDelete={() => {}} onEdit={() => {}} />
-      ))}
-    </>
-  );
-}
 
 function ReviewCard({ data, shopId, onDelete, onEdit }: { data: Review; shopId: string; onDelete: (id: string) => void; onEdit: () => void }) {
   const createdDate = new Date(data.createdAt).toLocaleString(undefined, { hour12: false });

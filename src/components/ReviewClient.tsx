@@ -113,6 +113,11 @@ export function ReviewMenu({
     }
   }
 
+  // Render the menu and buttons only if the user is logged in
+  if (!session?.user?.token) {
+    return null // Don't render anything if the user is not authorized
+  }
+
   return (
     <>
       {(session?.user?.role === 'admin' || session?.user?._id === reviewOwnerId) && (
