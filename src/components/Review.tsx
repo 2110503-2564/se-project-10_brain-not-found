@@ -6,19 +6,8 @@ import getReviews from "@/libs/getReviews";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import createReview from "@/libs/createReview";
+import getShop from "@/libs/getShop";
 
-export interface Review {
-  _id: string;
-  header: string;
-  comment: string;
-  rating: number;
-  createdAt: string;
-  edited?: string;
-  user: {
-    _id: string;
-    name: string;
-  };
-}
 
 export function ReviewSection({ shopId }: { shopId: string }) {
   const [header, setHeader] = useState("");
@@ -32,12 +21,16 @@ export function ReviewSection({ shopId }: { shopId: string }) {
   const [totalReviews, setTotalReviews] = useState(0);
   const limit = 5;
   const { data: session } = useSession();
+  const [e,ee] = useState<SingleShopItem>();
 
   // Determine if the logged-in user has already submitted a review.
   // Assumes that session.user.id exists and each review's user contains _id.
   const hasReviewed =
-    session?.user?._id && reviews.some(review => review.user._id === session.user._id);
-
+    session?.user?._id && e?.data.reviews && e.data.reviews.some((review: any) => review.user === session.user._id);
+  if (session?.user?._id) console.log(session.user._id)
+  if (e?.data.reviews) console.log(e.data.reviews)
+  // if (e.data.reviews.some((review: any) => review.user === session.user._id)) console.log(3)
+  
   const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
   };
@@ -73,6 +66,14 @@ export function ReviewSection({ shopId }: { shopId: string }) {
     fetchReviews();
   }, [shopId, refreshTrigger, page]);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      const data = await getShop(shopId);
+      ee(data);
+    }
+    fetchData();
+  }, [refreshTrigger]);
+
   const handleSubmit = async () => {
     if (!session?.user || !session.user.token || rating === null) return;
 
@@ -103,7 +104,7 @@ export function ReviewSection({ shopId }: { shopId: string }) {
   return (
     <Stack spacing={4}>
       <Typography variant="h5" component="h2" sx={{ fontWeight: "bold" }}>
-        Reviews
+        Reviews {hasReviewed && 'IT WORKS'}
       </Typography>
 
       {loadingReviews ? (

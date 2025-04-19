@@ -13,6 +13,11 @@
   edited?: Date
  }
 
+ interface SingleShopItem {
+  success: boolean;
+  data: ShopItem;
+}
+
  interface ReviewJson {
   success: boolean,
   count: number,
