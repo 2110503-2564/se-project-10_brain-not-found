@@ -1,6 +1,7 @@
 import { Avatar, Box, Grid, IconButton, Pagination, Rating, Skeleton, Stack, Typography } from "@mui/material";
 import { grey } from "@mui/material/colors";
 import { ReviewMenu } from "./ReviewClient";
+import DeleteReviewBtn from "./DeleteReviewBtn";
 import getReviews from "@/libs/getReviews";
 
 export function ReviewSection({shopId} : {shopId: string}) {
@@ -57,7 +58,8 @@ function ReviewCard({data} : {data: Review}) {
                         <Typography variant="caption" sx={{fontSize: '0.625rem'}}>{date}</Typography>
                     </Stack>    
                 </Stack>
-                <ReviewMenu/> {/* TODO: implement working buttons */}
+                {/* <ReviewMenu/> TODO: implement working buttons */}
+                <DeleteReviewBtn reviewId={data._id} shopId={data.shop} ownerId={data.user._id}/>
             </Stack>
             
             <Typography variant="h5" component="h3" sx={{fontWeight: 'bold' }}>
