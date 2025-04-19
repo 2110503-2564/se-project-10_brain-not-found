@@ -1,23 +1,110 @@
-import { Avatar, Box, Grid, IconButton, Pagination, Rating, Skeleton, Stack, Typography } from "@mui/material";
+'use client'
+import { Avatar, Box, Button, Grid, IconButton, Pagination, Rating, Skeleton, Stack, TextField, Typography } from "@mui/material";
 import { grey } from "@mui/material/colors";
 import { ReviewMenu } from "./ReviewClient";
 import getReviews from "@/libs/getReviews";
+import createReview from "@/libs/createReview";
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
-export function ReviewSection({shopId} : {shopId: string}) {
-    
+export function ReviewSection({ shopId }: { shopId: string }) {
+    const [header, setHeader] = useState("");
+    const [comment, setComment] = useState("");
+    const [rating, setRating] = useState<number | null>(0);
+    const [submitting, setSubmitting] = useState(false);
+    const [reviews, setReviews] = useState<Review[]>([]);
+    const [loadingReviews, setLoadingReviews] = useState(true);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const { data: session } = useSession();
+  
+    // Load reviews
+    useEffect(() => {
+      const fetchReviews = async () => {
+        setLoadingReviews(true);
+        const data = await getReviews(shopId, 1);
+        setReviews(data.data);
+        setLoadingReviews(false);
+      };
+      fetchReviews();
+    }, [shopId, refreshTrigger]);
+  
+    const handleSubmit = async () => {
+      if (!session?.user || !session.user.token || rating === null) return;
+  
+      setSubmitting(true);
+      try {
+        const result = await createReview(session.user.token, shopId, {
+          header,
+          comment,
+          rating,
+        });
+  
+        if (result?.success) {
+          setHeader("");
+          setComment("");
+          setRating(0);
+          alert("Review submitted successfully!");
+          setRefreshTrigger(prev => prev + 1); // Refresh review list
+        }
+      } catch (err: any) {
+        alert(err.message);
+      } finally {
+        setSubmitting(false);
+      }
+    };
+  
     return (
-        <>
-        <Stack spacing={4}>
-            <Typography variant="h5" component="h2" sx={{ fontWeight:'bold' }}>Reviews</Typography>
-            <ReviewList shopId={shopId} page={1}/>
-            {/* TODO: Implement create review form */}
-            <Box alignSelf='center'>
-                <Pagination count={3} color="primary"/> {/* TODO: Implement working pagination system */}
-            </Box>
-        </Stack> 
-        </>
-    )
-}
+      <Stack spacing={4}>
+        <Typography variant="h5" component="h2" sx={{ fontWeight: "bold" }}>
+          Reviews
+        </Typography>
+  
+        {loadingReviews ? (
+          <ReviewSkeleton />
+        ) : reviews.length === 0 ? (
+          <Typography variant="h6" sx={{ color: grey[500] }}>
+            No reviews found
+          </Typography>
+        ) : (
+          reviews.map((review) => <ReviewCard data={review} key={review._id} />)
+        )}
+  
+        {/* Create Review Form */}
+        <Stack spacing={2} sx={{ border: "1px solid #ccc", p: 3, borderRadius: 2 }}>
+          <Typography variant="h6">Write a Review</Typography>
+          <Rating
+            value={rating}
+            onChange={(e, newValue) => setRating(newValue)}
+          />
+          <TextField
+            label="Title"
+            value={header}
+            onChange={(e) => setHeader(e.target.value)}
+            fullWidth
+          />
+          <TextField
+            label="Comment"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            fullWidth
+            multiline
+            minRows={3}
+          />
+          <Button
+            variant="contained"
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
+            {submitting ? "Submitting..." : "Submit Review"}
+          </Button>
+        </Stack>
+  
+        <Box alignSelf="center">
+          <Pagination count={3} color="primary" />
+        </Box>
+      </Stack>
+    );
+  }
 
 async function ReviewList({page, shopId} : {page: number, shopId: string}) {
 
