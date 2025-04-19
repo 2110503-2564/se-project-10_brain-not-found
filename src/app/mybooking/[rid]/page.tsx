@@ -67,7 +67,7 @@ export default async function EditBookingPage({ params }: { params: { rid: strin
                             }}
                         >
                             <Image
-                                src={(shop.data.picture ?? '/img/logo.png')}
+                                src={(shop.data.picture && shop.data.picture.length > 0 ? shop.data.picture[0] : '/img/logo.png')}
                                 alt={shop.data.name}
                                 width={0}
                                 height={0}
