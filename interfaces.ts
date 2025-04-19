@@ -5,8 +5,9 @@
   rating: number,
   shop: string,
   user: {
-    name: string,
-    _id: string
+    name: string
+    _id: string,
+    email: string
   },
   createdAt: Date,
   edited?: Date
