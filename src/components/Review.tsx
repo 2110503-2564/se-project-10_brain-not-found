@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import createReview from "@/libs/createReview";
 
+
 export function ReviewSection({ shopId }: { shopId: string }) {
     const [header, setHeader] = useState("");
     const [comment, setComment] = useState("");
@@ -28,17 +29,20 @@ export function ReviewSection({ shopId }: { shopId: string }) {
         setRefreshTrigger(prev => prev + 1);
       };
       
+
     // Load reviews
     useEffect(() => {
       const fetchReviews = async () => {
         setLoadingReviews(true);
         const data = await getReviews(shopId, page);
         setTotalReviews(data.totalReviews);
+
         setReviews(data.data);
         setLoadingReviews(false);
       };
       fetchReviews();
     }, [shopId, refreshTrigger, page]);
+
   
     const handleSubmit = async () => {
       if (!session?.user || !session.user.token || rating === null) return;
@@ -64,12 +68,12 @@ export function ReviewSection({ shopId }: { shopId: string }) {
         setSubmitting(false);
       }
     };
-
     const totalPages = Math.ceil(totalReviews / limit);
     // debug
     // console.log("Total Reviews:", totalReviews);
     // console.log("Limit:", limit);
     // console.log("Calculated Page Count:", totalPages);
+
   
     return (
       <Stack spacing={4}>
