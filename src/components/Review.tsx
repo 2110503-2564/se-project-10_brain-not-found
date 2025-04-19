@@ -33,11 +33,7 @@ export function ReviewSection({ shopId }: { shopId: string }) {
   };
 
   const handleDelete = (id: string) => {
-    const deletedReview = reviews.find(r => r._id === id);
-    if (deletedReview && deletedReview.user._id === session?.user?._id) {
-      setHasReviewed(false);
-      setCheckedReview(false);
-    }
+    
   
     setRefreshTrigger(prev => prev + 1);
   };
