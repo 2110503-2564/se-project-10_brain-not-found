@@ -5,8 +5,10 @@
   rating: number,
   shop: string,
   user: {
-      email: string | undefinedname: string
-},
+    name: string
+    _id: string,
+    email: string
+  },
   createdAt: Date,
   edited?: Date
  }

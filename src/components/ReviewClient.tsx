@@ -73,7 +73,7 @@ export function ReviewMenu({
   const handleConfirmEdit = async () => {
     if (!session?.user?.token || rating === null) return
     try {
-      const result = await editReview({
+      await editReview({
         token: session.user.token,
         shopId,
         reviewId,
@@ -83,9 +83,7 @@ export function ReviewMenu({
           rating
         }
       })
-      if (result?.success) {
-        onEditSuccess?.()  // เพื่อให้รีวิวที่ได้รับการแก้ไขได้รับการรีเฟรช
-      }
+      onEditSuccess?.()
     } catch (err: any) {
       alert("Failed to edit review: " + err.message)
     } finally {
