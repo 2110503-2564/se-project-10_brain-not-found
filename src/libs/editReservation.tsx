@@ -1,11 +1,11 @@
-// src/libs/editReservation.tsx
+
 export default async function editReservation(
   reservationId: string,
   reservationDate: string,
   token: string
 ) {
   const response = await fetch(
-      `https://project-sd-fronted-sub-backend.vercel.app/api/v1/reservations/${reservationId}`,
+      `${process.env.BACKEND_URL}/api/v1/reservations/${reservationId}`,
       {
           method: "PUT",
           headers: {
