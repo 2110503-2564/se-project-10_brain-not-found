@@ -174,6 +174,7 @@ function ReviewCard({ data, shopId, onDelete, onEdit }: { data: Review, shopId: 
           </Stack>
           <ReviewMenu
             reviewId={data._id}
+            reviewOwnerId={data.user._id}
             shopId={shopId}
             onDeleteSuccess={() => onDelete(data._id)}
             onEditSuccess={onEdit}
