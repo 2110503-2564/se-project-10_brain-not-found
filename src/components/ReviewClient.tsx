@@ -12,6 +12,7 @@ import { useSession } from "next-auth/react"
 
 type Props = {
   reviewId: string
+  reviewOwnerId: string
   shopId: string
   onDeleteSuccess?: () => void
   onEditSuccess?: () => void
@@ -22,6 +23,7 @@ type Props = {
 
 export function ReviewMenu({
   reviewId,
+  reviewOwnerId,
   shopId,
   onDeleteSuccess,
   onEditSuccess,
@@ -71,7 +73,26 @@ export function ReviewMenu({
   }
 
   const handleConfirmEdit = async () => {
-    if (!session?.user?.token || rating === null) return
+
+    if (!session?.user?.token){
+      return;
+    }
+
+    if (!header || !comment || !rating || rating === 0){
+      alert("Please provide a rating, title, and comment before saving.");
+      return;
+    }
+
+    if (header.length >50){
+      alert("Title must be 50 characters or less.")
+      return;
+    }
+
+    if (comment.length >250){
+      alert("Comment must be 250 characters or less.")
+      return;
+    }
+
     try {
       await editReview({
         token: session.user.token,
@@ -80,7 +101,8 @@ export function ReviewMenu({
         updatedData: {
           header,
           comment,
-          rating
+          rating,
+          edited: new Date().toISOString()
         }
       })
       onEditSuccess?.()
@@ -98,12 +120,17 @@ export function ReviewMenu({
 
   return (
     <>
-      <IconButton onClick={handleClickMenu}>
-        <MoreVerticalIcon />
-      </IconButton>
+      {(session?.user?.role === 'admin' || session?.user?._id === reviewOwnerId) && (
+        <IconButton onClick={handleClickMenu}>
+          <MoreVerticalIcon />
+        </IconButton>
+      )}
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleCloseMenu}>
-        <MenuItem onClick={handleClickEdit}>Edit</MenuItem>
+        {(session?.user?._id === reviewOwnerId) && (
+          <MenuItem onClick={handleClickEdit}>Edit</MenuItem>
+        )}
         <MenuItem onClick={handleClickDelete}>Delete</MenuItem>
+        
       </Menu>
 
       {/* Delete Dialog */}

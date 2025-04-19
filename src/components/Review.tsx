@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import createReview from "@/libs/createReview";
 
+
 export function ReviewSection({ shopId }: { shopId: string }) {
     const [header, setHeader] = useState("");
     const [comment, setComment] = useState("");
@@ -15,21 +16,33 @@ export function ReviewSection({ shopId }: { shopId: string }) {
     const [reviews, setReviews] = useState<Review[]>([]);
     const [loadingReviews, setLoadingReviews] = useState(true);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [page, setPage] = useState(1); // current page
+    const [totalReviews, setTotalReviews] = useState(0);
+    const limit = 5;
     const { data: session } = useSession();
+
+    const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+      setPage(value);
+    };
+
     const handleDelete = (id: string) => {
         setRefreshTrigger(prev => prev + 1);
       };
       
+
     // Load reviews
     useEffect(() => {
       const fetchReviews = async () => {
         setLoadingReviews(true);
-        const data = await getReviews(shopId, 1);
+        const data = await getReviews(shopId, page);
+        setTotalReviews(data.totalReviews);
+
         setReviews(data.data);
         setLoadingReviews(false);
       };
       fetchReviews();
-    }, [shopId, refreshTrigger]);
+    }, [shopId, refreshTrigger, page]);
+
   
     const handleSubmit = async () => {
       if (!session?.user || !session.user.token || rating === null) return;
@@ -55,6 +68,12 @@ export function ReviewSection({ shopId }: { shopId: string }) {
         setSubmitting(false);
       }
     };
+    const totalPages = Math.ceil(totalReviews / limit);
+    // debug
+    // console.log("Total Reviews:", totalReviews);
+    // console.log("Limit:", limit);
+    // console.log("Calculated Page Count:", totalPages);
+
   
     return (
       <Stack spacing={4}>
@@ -75,6 +94,7 @@ export function ReviewSection({ shopId }: { shopId: string }) {
                   key={review._id}
                   shopId={shopId}
                   onDelete={handleDelete}
+                  onEdit={()=> setRefreshTrigger(prev=> prev+1)}
                 />
               ))
               
@@ -111,7 +131,7 @@ export function ReviewSection({ shopId }: { shopId: string }) {
         </Stack>
   
         <Box alignSelf="center">
-          <Pagination count={3} color="primary" />
+          <Pagination count={totalPages} page={page} onChange={handlePageChange} color="primary" />
         </Box>
       </Stack>
     );
@@ -131,12 +151,12 @@ async function ReviewList({page, shopId} : {page: number, shopId: string}) {
 
     return (
         <>
-        {reviews.data.map((review) => ( <ReviewCard data={review} key={review._id} shopId={shopId} onDelete={()=>{}}/>))}
+        {reviews.data.map((review) => ( <ReviewCard data={review} key={review._id} shopId={shopId} onDelete={()=>{}} onEdit={()=>{}}/>))}
         </>
     )
 }
 
-function ReviewCard({ data, shopId, onDelete }: { data: Review, shopId: string, onDelete: (id: string) => void }) {
+function ReviewCard({ data, shopId, onDelete, onEdit }: { data: Review, shopId: string, onDelete: (id: string) => void, onEdit: ()=> void }) {
     const createdDate = new Date(data.createdAt).toLocaleString(undefined, { hour12: false });
     const editedDate = data.edited ? new Date(data.edited).toLocaleString(undefined, { hour12: false }) : undefined;
     const date = editedDate ? `${createdDate} (edited: ${editedDate})` : createdDate;
@@ -154,8 +174,13 @@ function ReviewCard({ data, shopId, onDelete }: { data: Review, shopId: string, 
           </Stack>
           <ReviewMenu
             reviewId={data._id}
+            reviewOwnerId={data.user._id}
             shopId={shopId}
             onDeleteSuccess={() => onDelete(data._id)}
+            onEditSuccess={onEdit}
+            currentRating={data.rating}
+            currentHeader={data.header}
+            currentComment={data.comment}
           />
         </Stack>
   

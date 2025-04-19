@@ -12,6 +12,7 @@ export default async function editReview(
         header?: string;
         comment?: string;
         rating?: number;
+        edited: string;
       };
     }
   ) {
