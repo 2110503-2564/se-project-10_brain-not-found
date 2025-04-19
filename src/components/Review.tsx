@@ -6,8 +6,19 @@ import getReviews from "@/libs/getReviews";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import createReview from "@/libs/createReview";
-import getShop from "@/libs/getShop";
 
+export interface Review {
+  _id: string;
+  header: string;
+  comment: string;
+  rating: number;
+  createdAt: string;
+  edited?: string;
+  user: {
+    _id: string;
+    name: string;
+  };
+}
 
 export function ReviewSection({ shopId }: { shopId: string }) {
   const [header, setHeader] = useState("");
@@ -19,21 +30,21 @@ export function ReviewSection({ shopId }: { shopId: string }) {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [page, setPage] = useState(1);
   const [totalReviews, setTotalReviews] = useState(0);
+  const [hasReviewed, setHasReviewed] = useState(false);
+  const [checkedReview, setCheckedReview] = useState(false);
   const limit = 5;
   const { data: session } = useSession();
-  const [e,ee] = useState<SingleShopItem>();
 
-  // Determine if the logged-in user has already submitted a review.
-  // Assumes that session.user.id exists and each review's user contains _id.
-  const hasReviewed =
-    session?.user?._id && e?.data.reviews && e.data.reviews.some((review: any) => review.user === session.user._id);
-  
   const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
   };
 
   const handleDelete = (id: string) => {
-    
+    const deletedReview = reviews.find(r => r._id === id);
+    if (deletedReview && deletedReview.user._id === session?.user?._id) {
+      setHasReviewed(false);
+      setCheckedReview(false);
+    }
   
     setRefreshTrigger(prev => prev + 1);
   };
@@ -60,17 +71,15 @@ export function ReviewSection({ shopId }: { shopId: string }) {
 
       setReviews(newReviews);
       setLoadingReviews(false);
+
+      if (session?.user?._id && page === 1 && !checkedReview) {
+        const found = newReviews.some(review => review.user._id === session.user._id);
+        setHasReviewed(found);
+        setCheckedReview(true);
+      }
     };
     fetchReviews();
-  }, [shopId, refreshTrigger, page, session?.user?._id]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const data = await getShop(shopId);
-      ee(data);
-    }
-    fetchData();
-  }, [refreshTrigger]);
+  }, [shopId, refreshTrigger, page, session?.user?._id, checkedReview]);
 
   const handleSubmit = async () => {
     if (!session?.user || !session.user.token || rating === null) return;
@@ -88,6 +97,7 @@ export function ReviewSection({ shopId }: { shopId: string }) {
         setComment("");
         setRating(0);
         alert("Review submitted successfully!");
+        setHasReviewed(true);
         setRefreshTrigger(prev => prev + 1);
       }
     } catch (err: any) {
