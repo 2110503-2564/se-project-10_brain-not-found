@@ -9,7 +9,8 @@ const loadBadWords = (): string[] => {
 
 export const analyzeBadWords = (input: string): { hasBadWord: boolean; badWordFound: string[] } => {
     const badWords = loadBadWords();
-    const regex = new RegExp(`(${badWords.join("|")})`, "gi");
+    const pattern = `\\b(${badWords.join("|")})\\b`;
+    const regex = new RegExp(pattern, "gi");
 
     const matches = input.match(regex) || [];
 
