@@ -3,10 +3,11 @@ import getVenue from "@/libs/getShop";
 import BookingForm from "@/components/BookingForm";
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
-import { Paper, Typography, Grid, Box, Divider, LinearProgress } from "@mui/material";
-import { orange, grey } from "@mui/material/colors";
+import { Paper, Typography, Grid, Box, Divider, LinearProgress, Stack } from "@mui/material";
+import { orange, grey, yellow } from "@mui/material/colors";
 import { Suspense } from "react";
-import { ReviewPage } from "@/components/Review";
+import { ReviewSection, ReviewSkeleton } from "@/components/Review";
+import { Star } from "lucide-react";
 
 export default function ShopDetailPage({ params }: { params: { mid: string } }) {
     return (
@@ -21,7 +22,7 @@ export default function ShopDetailPage({ params }: { params: { mid: string } }) 
                     padding: 4,
                 }}
             >
-              <Paper
+          <Paper
         elevation={3}
         sx={{
           width: "90%",
@@ -32,11 +33,13 @@ export default function ShopDetailPage({ params }: { params: { mid: string } }) 
         }}
               >
             <Suspense fallback={<LinearProgress/>}>
-                <ShopDetail shopId={params.mid}/>
+              <ShopDetail shopId={params.mid}/>
             </Suspense>
             <Divider sx={{ my: 4, borderColor: orange[300] }} />
-            <ReviewPage shopId={params.mid}/>
-            </Paper>   
+            <Suspense fallback={<ReviewSkeleton/>}>
+              <ReviewSection shopId={params.mid}/>
+            </Suspense>
+          </Paper>   
         </Box>
     )
         
@@ -110,11 +113,8 @@ async function ShopDetail({shopId} :{shopId: string}) {
 
 }
 
-
-
-
-
 function ShopImage({src, alt} : {src: string, alt: string}) {
+  
     return (
       <Box
         sx={{
@@ -126,7 +126,7 @@ function ShopImage({src, alt} : {src: string, alt: string}) {
         }}
       >
         <Image
-          src={src ?? "/img/logo.png"}
+          src={src.toString() ?? "/img/logo.png"}
           alt={alt}
           width={0}
           height={0}
@@ -138,6 +138,21 @@ function ShopImage({src, alt} : {src: string, alt: string}) {
 }
 
 function ShopInfo({info} : {info: ShopItem}) {
+
+  function ReviewCount({count} : {count?: number}) {
+
+    if (typeof count === undefined) {
+      return (<Typography variant="subtitle2">No Data</Typography>)
+    }
+
+    if (typeof count === "number" && count <= 1) {
+      return (<Typography variant="subtitle2">{`(${count} review)`}</Typography>)
+    } 
+
+    return (<Typography variant="subtitle2">{`(${count} reviews)`}</Typography>)
+    
+  }
+
     return (
       <Box sx={{ textAlign: "left", padding: 2 }}>
         <Typography
@@ -147,6 +162,18 @@ function ShopInfo({info} : {info: ShopItem}) {
         >
           {info.name}
         </Typography>
+        <Stack direction="row" spacing={0.75} alignItems="center" width='fit-content'>
+          <Stack direction="row" spacing={1} alignItems='center' justifyContent='center' sx={{
+          backgroundColor: yellow[300],
+          borderRadius: "8px",
+          paddingX: "6px",
+          paddingY: "2px",
+          }}>
+            <Star size={20} color="#000000" strokeWidth={1.25} />
+            <Typography variant="body1">{info.averageRating}</Typography>
+          </Stack>
+          <ReviewCount count={info.reviewCount}/>
+        </Stack>
         <Typography variant="body1" sx={{ color: grey[800] }}>
           <b>Address:</b> {info.address}
         </Typography>
