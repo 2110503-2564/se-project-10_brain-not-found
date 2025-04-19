@@ -1,4 +1,3 @@
-// src/libs/deleteReview.tsx
 export default async function deleteReview(
     { token, shopId, reviewId } : { token: string , shopId: string, reviewId:string}
 ) {

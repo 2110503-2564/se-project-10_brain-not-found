@@ -131,7 +131,7 @@ async function ReviewList({page, shopId} : {page: number, shopId: string}) {
 
     return (
         <>
-        {reviews.data.map((review) => ( <ReviewCard data={review} key={review._id}/>))}
+        {reviews.data.map((review) => ( <ReviewCard data={review} key={review._id} shopId={shopId} onDelete={()=>{}}/>))}
         </>
     )
 }

@@ -2,30 +2,55 @@
 
 import {
   Button, Dialog, DialogActions, DialogContent, DialogContentText,
-  DialogTitle, IconButton, Menu, MenuItem
+  DialogTitle, IconButton, Menu, MenuItem, Rating, TextField
 } from "@mui/material"
 import { MoreVerticalIcon } from "lucide-react"
-import React from "react"
+import React, { useState } from "react"
 import deleteReview from "@/libs/deleteReview"
+import editReview from "@/libs/editReview"
 import { useSession } from "next-auth/react"
 
 type Props = {
   reviewId: string
   shopId: string
   onDeleteSuccess?: () => void
+  onEditSuccess?: () => void
+  currentHeader?: string
+  currentComment?: string
+  currentRating?: number
 }
 
-export function ReviewMenu({ reviewId, shopId, onDeleteSuccess }: Props) {
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null)
-  const [openDeleteDialog, toggleDeleteDialog] = React.useState(false)
+export function ReviewMenu({
+  reviewId,
+  shopId,
+  onDeleteSuccess,
+  onEditSuccess,
+  currentHeader = '',
+  currentComment = '',
+  currentRating = 0,
+}: Props) {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  const [openDeleteDialog, toggleDeleteDialog] = useState(false)
+  const [openEditDialog, toggleEditDialog] = useState(false)
   const { data: session } = useSession()
+
+  const [header, setHeader] = useState(currentHeader)
+  const [comment, setComment] = useState(currentComment)
+  const [rating, setRating] = useState<number | null>(currentRating)
 
   const handleClickMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget)
   }
+
   const handleCloseMenu = () => setAnchorEl(null)
+
   const handleClickDelete = () => {
     toggleDeleteDialog(true)
+    handleCloseMenu()
+  }
+
+  const handleClickEdit = () => {
+    toggleEditDialog(true)
     handleCloseMenu()
   }
 
@@ -45,15 +70,40 @@ export function ReviewMenu({ reviewId, shopId, onDeleteSuccess }: Props) {
     }
   }
 
+  const handleConfirmEdit = async () => {
+    if (!session?.user?.token || rating === null) return
+    try {
+      const result = await editReview({
+        token: session.user.token,
+        shopId,
+        reviewId,
+        updatedData: {
+          header,
+          comment,
+          rating
+        }
+      })
+      if (result?.success) {
+        onEditSuccess?.()  // เพื่อให้รีวิวที่ได้รับการแก้ไขได้รับการรีเฟรช
+      }
+    } catch (err: any) {
+      alert("Failed to edit review: " + err.message)
+    } finally {
+      toggleEditDialog(false)
+    }
+  }
+
   return (
     <>
       <IconButton onClick={handleClickMenu}>
         <MoreVerticalIcon />
       </IconButton>
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleCloseMenu}>
-        <MenuItem>Edit</MenuItem>
+        <MenuItem onClick={handleClickEdit}>Edit</MenuItem>
         <MenuItem onClick={handleClickDelete}>Delete</MenuItem>
       </Menu>
+
+      {/* Delete Dialog */}
       <Dialog open={openDeleteDialog} onClose={() => toggleDeleteDialog(false)}>
         <DialogTitle>Delete this review?</DialogTitle>
         <DialogContent>
@@ -64,7 +114,35 @@ export function ReviewMenu({ reviewId, shopId, onDeleteSuccess }: Props) {
           <Button color="error" onClick={handleConfirmDelete}>Delete</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={openEditDialog} onClose={() => toggleEditDialog(false)}>
+        <DialogTitle>Edit Review</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+          <Rating
+            value={rating}
+            onChange={(_, newValue) => setRating(newValue)}
+          />
+          <TextField
+            label="Title"
+            value={header}
+            onChange={(e) => setHeader(e.target.value)}
+            fullWidth
+          />
+          <TextField
+            label="Comment"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            fullWidth
+            multiline
+            minRows={3}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => toggleEditDialog(false)}>Cancel</Button>
+          <Button onClick={handleConfirmEdit}>Save</Button>
+        </DialogActions>
+      </Dialog>
     </>
   )
 }
-

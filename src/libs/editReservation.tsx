@@ -1,4 +1,4 @@
-// src/libs/editReservation.tsx
+
 export default async function editReservation(
   reservationId: string,
   reservationDate: string,
