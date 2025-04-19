@@ -62,7 +62,7 @@ const BookingListClient: React.FC<BookingListClientProps> = ({ token, bookings }
     return (
         <div className="p-5">
             {updatedBookings.length === 0 ? (
-                <div className="text-center text-lg text-orange-600">No Venue Booking</div>
+                <div className="text-center text-lg text-orange-600">No Massage Shop Booking</div>
             ) : (
                 updatedBookings.map((item) => (
                     <div
@@ -72,9 +72,9 @@ const BookingListClient: React.FC<BookingListClientProps> = ({ token, bookings }
                         <div className="flex flex-row items-center space-x-5">
                             <div>
                                 <Image
-                                    src={item.shop.picture ?? '/img/logo.png'}
+                                    src={item.shop.picture && item.shop.picture.length > 0 ? item.shop.picture[0] : '/img/logo.png'}
                                     alt="Item Picture"
-                                    width={120}
+                                    width={200}
                                     height={120}
                                     className="object-cover rounded-lg border border-orange-300"
                                 />
