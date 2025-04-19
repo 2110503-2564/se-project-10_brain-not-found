@@ -30,7 +30,7 @@ const MassageCatalogClient: React.FC<MassageCatalogClientProps> = ({ shopJsonRea
             <div className="bg-white border border-gray-200 rounded-lg shadow-md overflow-hidden flex flex-col justify-between h-full">
               {/* ใช้ Image จาก next/image */}
               <Image
-                src={ShopItem.picture}
+                src={ShopItem.picture[0]}
                 alt={ShopItem.name}
                 className="w-full h-48 object-cover"
                 width={500} // กำหนดขนาดความกว้าง

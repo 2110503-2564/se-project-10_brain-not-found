@@ -38,7 +38,7 @@
     province: string,
     postalcode: string,
     tel: string,
-    picture: string,
+    picture: string[],
     region:string,
     openTime:string,
     closeTime:string,
