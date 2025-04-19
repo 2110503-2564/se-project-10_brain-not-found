@@ -4,7 +4,9 @@
   comment: string,
   rating: number,
   shop: string,
-  user: {name: string},
+  user: {
+      email: string | undefinedname: string
+},
   createdAt: Date,
   edited?: Date
  }
