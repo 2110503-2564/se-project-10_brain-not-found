@@ -12,6 +12,7 @@ import { useSession } from "next-auth/react"
 
 type Props = {
   reviewId: string
+  reviewOwnerId: string
   shopId: string
   onDeleteSuccess?: () => void
   onEditSuccess?: () => void
@@ -22,6 +23,7 @@ type Props = {
 
 export function ReviewMenu({
   reviewId,
+  reviewOwnerId,
   shopId,
   onDeleteSuccess,
   onEditSuccess,
@@ -93,12 +95,17 @@ export function ReviewMenu({
 
   return (
     <>
-      <IconButton onClick={handleClickMenu}>
-        <MoreVerticalIcon />
-      </IconButton>
+      {(session?.user?.role === 'admin' || session?.user?._id === reviewOwnerId) && (
+        <IconButton onClick={handleClickMenu}>
+          <MoreVerticalIcon />
+        </IconButton>
+      )}
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleCloseMenu}>
-        <MenuItem onClick={handleClickEdit}>Edit</MenuItem>
+        {(session?.user?._id === reviewOwnerId) && (
+          <MenuItem onClick={handleClickEdit}>Edit</MenuItem>
+        )}
         <MenuItem onClick={handleClickDelete}>Delete</MenuItem>
+        
       </Menu>
 
       {/* Delete Dialog */}

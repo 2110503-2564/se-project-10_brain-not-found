@@ -173,6 +173,7 @@ function ReviewCard({ data, shopId, onDelete }: { data: Review, shopId: string, 
           </Stack>
           <ReviewMenu
             reviewId={data._id}
+            reviewOwnerId={data.user._id}
             shopId={shopId}
             onDeleteSuccess={() => onDelete(data._id)}
           />
