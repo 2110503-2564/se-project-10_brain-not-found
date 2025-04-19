@@ -4,7 +4,11 @@
   comment: string,
   rating: number,
   shop: string,
-  user: {name: string},
+  user: {
+    name: string
+    _id: string,
+    email: string
+  },
   createdAt: Date,
   edited?: Date
  }
@@ -34,7 +38,7 @@
     province: string,
     postalcode: string,
     tel: string,
-    picture: string,
+    picture: string[],
     region:string,
     openTime:string,
     closeTime:string,

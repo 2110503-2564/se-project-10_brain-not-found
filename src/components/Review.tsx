@@ -3,9 +3,10 @@ import { Avatar, Box, Button, Grid, IconButton, Pagination, Rating, Skeleton, St
 import { grey } from "@mui/material/colors";
 import { ReviewMenu } from "./ReviewClient";
 import getReviews from "@/libs/getReviews";
-import createReview from "@/libs/createReview";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import createReview from "@/libs/createReview";
+
 
 export function ReviewSection({ shopId }: { shopId: string }) {
     const [header, setHeader] = useState("");
@@ -15,18 +16,33 @@ export function ReviewSection({ shopId }: { shopId: string }) {
     const [reviews, setReviews] = useState<Review[]>([]);
     const [loadingReviews, setLoadingReviews] = useState(true);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [page, setPage] = useState(1); // current page
+    const [totalReviews, setTotalReviews] = useState(0);
+    const limit = 5;
     const { data: session } = useSession();
-  
+
+    const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+      setPage(value);
+    };
+
+    const handleDelete = (id: string) => {
+        setRefreshTrigger(prev => prev + 1);
+      };
+      
+
     // Load reviews
     useEffect(() => {
       const fetchReviews = async () => {
         setLoadingReviews(true);
-        const data = await getReviews(shopId, 1);
+        const data = await getReviews(shopId, page);
+        setTotalReviews(data.count);
+
         setReviews(data.data);
         setLoadingReviews(false);
       };
       fetchReviews();
-    }, [shopId, refreshTrigger]);
+    }, [shopId, refreshTrigger, page]);
+
   
     const handleSubmit = async () => {
       if (!session?.user || !session.user.token || rating === null) return;
@@ -52,6 +68,12 @@ export function ReviewSection({ shopId }: { shopId: string }) {
         setSubmitting(false);
       }
     };
+    const totalPages = Math.ceil(totalReviews / limit);
+    // debug
+    // console.log("Total Reviews:", totalReviews);
+    // console.log("Limit:", limit);
+    // console.log("Calculated Page Count:", totalPages);
+
   
     return (
       <Stack spacing={4}>
@@ -66,7 +88,15 @@ export function ReviewSection({ shopId }: { shopId: string }) {
             No reviews found
           </Typography>
         ) : (
-          reviews.map((review) => <ReviewCard data={review} key={review._id} />)
+            reviews.map((review) => (
+                <ReviewCard
+                  data={review}
+                  key={review._id}
+                  shopId={shopId}
+                  onDelete={handleDelete}
+                />
+              ))
+              
         )}
   
         {/* Create Review Form */}
@@ -100,7 +130,7 @@ export function ReviewSection({ shopId }: { shopId: string }) {
         </Stack>
   
         <Box alignSelf="center">
-          <Pagination count={3} color="primary" />
+          <Pagination count={totalPages} page={page} onChange={handlePageChange} color="primary" />
         </Box>
       </Stack>
     );
@@ -120,44 +150,44 @@ async function ReviewList({page, shopId} : {page: number, shopId: string}) {
 
     return (
         <>
-        {reviews.data.map((review) => ( <ReviewCard data={review} key={review._id}/>))}
+        {reviews.data.map((review) => ( <ReviewCard data={review} key={review._id} shopId={shopId} onDelete={()=>{}}/>))}
         </>
     )
 }
 
-function ReviewCard({data} : {data: Review}) {
-
-    const createdDate = new Date(data.createdAt).toLocaleString(undefined, {hour12: false});
-    const editedDate = data.edited? new Date(data.edited).toLocaleString(undefined, {hour12: false}) : undefined;
-    const date = editedDate? `${createdDate} (edited: ${editedDate})` : createdDate;
-    
+function ReviewCard({ data, shopId, onDelete }: { data: Review, shopId: string, onDelete: (id: string) => void }) {
+    const createdDate = new Date(data.createdAt).toLocaleString(undefined, { hour12: false });
+    const editedDate = data.edited ? new Date(data.edited).toLocaleString(undefined, { hour12: false }) : undefined;
+    const date = editedDate ? `${createdDate} (edited: ${editedDate})` : createdDate;
+  
     return (
-        <>
-        <Stack spacing={1} sx={{ overflowWrap: 'break-word' }}>
-
-            <Stack direction='row' spacing={2} width='75%'>
-                <Avatar sx={{ width: 50, height: 50 }}/>
-                <Stack flexGrow='1'>
-                    <Rating value={data.rating} readOnly/>
-                    <Stack direction='row' spacing={1} alignItems='baseline' flexWrap='wrap'>
-                        <Typography variant="h6" sx={{fontWeight: 'semi-bold'}}>{data.user.name}</Typography>
-                        <Typography variant="caption" sx={{fontSize: '0.625rem'}}>{date}</Typography>
-                    </Stack>    
-                </Stack>
-                <ReviewMenu/> {/* TODO: implement working buttons */}
+      <Stack spacing={1} sx={{ overflowWrap: 'break-word' }}>
+        <Stack direction='row' spacing={2} width='75%'>
+          <Avatar sx={{ width: 50, height: 50 }} />
+          <Stack flexGrow='1'>
+            <Rating value={data.rating} readOnly />
+            <Stack direction='row' spacing={1} alignItems='baseline' flexWrap='wrap'>
+              <Typography variant="h6" sx={{ fontWeight: 'semi-bold' }}>{data.user.name}</Typography>
+              <Typography variant="caption" sx={{ fontSize: '0.625rem' }}>{date}</Typography>
             </Stack>
-            
-            <Typography variant="h5" component="h3" sx={{fontWeight: 'bold' }}>
-                {data.header}
-            </Typography>
-            <Typography variant="body1" width='75%'>
-                {data.comment}
-            </Typography>
-
+          </Stack>
+          <ReviewMenu
+            reviewId={data._id}
+            shopId={shopId}
+            onDeleteSuccess={() => onDelete(data._id)}
+          />
         </Stack>
-        </>
-    )
-}
+  
+        <Typography variant="h5" component="h3" sx={{ fontWeight: 'bold' }}>
+          {data.header}
+        </Typography>
+        <Typography variant="body1" width='75%'>
+          {data.comment}
+        </Typography>
+      </Stack>
+    );
+  }
+  
 
 export function ReviewSkeleton() {
     return (
