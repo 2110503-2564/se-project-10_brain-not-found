@@ -71,7 +71,16 @@ export function ReviewMenu({
   }
 
   const handleConfirmEdit = async () => {
-    if (!session?.user?.token || rating === null) return
+
+    if (!session?.user?.token){
+      return;
+    }
+
+    if (!header.trim() || !comment.trim() || !rating || rating === 0){
+      alert("Please provide a rating, title, and comment before saving.");
+      return;
+    }
+
     try {
       await editReview({
         token: session.user.token,
