@@ -12,6 +12,7 @@ import { useSession } from "next-auth/react"
 
 type Props = {
   reviewId: string
+  reviewOwnerId: string
   shopId: string
   onDeleteSuccess?: () => void
   onEditSuccess?: () => void
@@ -22,6 +23,7 @@ type Props = {
 
 export function ReviewMenu({
   reviewId,
+  reviewOwnerId,
   shopId,
   onDeleteSuccess,
   onEditSuccess,
@@ -71,7 +73,16 @@ export function ReviewMenu({
   }
 
   const handleConfirmEdit = async () => {
-    if (!session?.user?.token || rating === null) return
+
+    if (!session?.user?.token){
+      return;
+    }
+
+    if (!rating){
+      alert('Please add complete information.');
+      return;
+    }
+
     try {
       await editReview({
         token: session.user.token,
@@ -80,7 +91,8 @@ export function ReviewMenu({
         updatedData: {
           header,
           comment,
-          rating
+          rating,
+          edited: new Date().toISOString()
         }
       })
       onEditSuccess?.()
@@ -91,14 +103,24 @@ export function ReviewMenu({
     }
   }
 
+  // Render the menu and buttons only if the user is logged in
+  if (!session?.user?.token) {
+    return null // Don't render anything if the user is not authorized
+  }
+
   return (
     <>
-      <IconButton onClick={handleClickMenu}>
-        <MoreVerticalIcon />
-      </IconButton>
+      {(session?.user?.role === 'admin' || session?.user?._id === reviewOwnerId) && (
+        <IconButton onClick={handleClickMenu}>
+          <MoreVerticalIcon />
+        </IconButton>
+      )}
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleCloseMenu}>
-        <MenuItem onClick={handleClickEdit}>Edit</MenuItem>
+        {(session?.user?._id === reviewOwnerId) && (
+          <MenuItem onClick={handleClickEdit}>Edit</MenuItem>
+        )}
         <MenuItem onClick={handleClickDelete}>Delete</MenuItem>
+        
       </Menu>
 
       {/* Delete Dialog */}
