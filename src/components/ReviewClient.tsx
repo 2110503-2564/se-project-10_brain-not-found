@@ -78,18 +78,8 @@ export function ReviewMenu({
       return;
     }
 
-    if (!header || !comment || !rating || rating === 0){
-      alert("Please provide a rating, title, and comment before saving.");
-      return;
-    }
-
-    if (header.length >50){
-      alert("Title must be 50 characters or less.")
-      return;
-    }
-
-    if (comment.length >250){
-      alert("Comment must be 250 characters or less.")
+    if (!rating){
+      alert('Please add complete information.');
       return;
     }
 
