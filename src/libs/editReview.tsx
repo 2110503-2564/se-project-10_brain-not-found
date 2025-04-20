@@ -12,17 +12,13 @@ export default async function editReview(
       shopId: string;
       reviewId: string;
       updatedData: {
-        header?: string;
-        comment?: string;
+        header: string;
+        comment: string;
         rating?: number;
         edited: string;
       };
     }
   ) {
-
-    if (!updatedData.header||!updatedData.comment){
-      return;
-    }
 
     const headerAnalysis = analyzeBadWords(updatedData.header);
     const commentAnalysis = analyzeBadWords(updatedData.comment);
