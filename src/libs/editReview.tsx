@@ -1,3 +1,6 @@
+
+import { analyzeBadWords } from "./validateReview";
+
 export default async function editReview(
     {
       token,
@@ -9,13 +12,23 @@ export default async function editReview(
       shopId: string;
       reviewId: string;
       updatedData: {
-        header?: string;
-        comment?: string;
+        header: string;
+        comment: string;
         rating?: number;
         edited: string;
       };
     }
   ) {
+
+    const headerAnalysis = analyzeBadWords(updatedData.header);
+    const commentAnalysis = analyzeBadWords(updatedData.comment);
+
+    if (headerAnalysis.hasBadWord || commentAnalysis.hasBadWord) {
+        const badWordsList = [...headerAnalysis.badWordFound, ...commentAnalysis.badWordFound];
+        alert(`Your review contains inappropriate language: ${badWordsList.join(", ")}. Please revise and try again.`);
+        return; // Reject the submission
+    }
+
     const response = await fetch(
       `${process.env.BACKEND_URL}/api/v1/shops/${shopId}/reviews/${reviewId}`,
       {

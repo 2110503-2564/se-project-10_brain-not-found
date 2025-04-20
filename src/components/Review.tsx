@@ -31,7 +31,6 @@ export function ReviewSection({ shopId }: { shopId: string }) {
   const [page, setPage] = useState(1);
   const [totalReviews, setTotalReviews] = useState(0);
   const [hasReviewed, setHasReviewed] = useState(false);
-  const [checkedReview, setCheckedReview] = useState(false);
   const limit = 5;
   const { data: session } = useSession();
 
@@ -43,9 +42,8 @@ export function ReviewSection({ shopId }: { shopId: string }) {
     const deletedReview = reviews.find(r => r._id === id);
     if (deletedReview && deletedReview.user._id === session?.user?._id) {
       setHasReviewed(false);
-      setCheckedReview(false);
     }
-  
+
     setRefreshTrigger(prev => prev + 1);
   };
 
@@ -71,15 +69,30 @@ export function ReviewSection({ shopId }: { shopId: string }) {
 
       setReviews(newReviews);
       setLoadingReviews(false);
-
-      if (session?.user?._id && page === 1 && !checkedReview) {
-        const found = newReviews.some(review => review.user._id === session.user._id);
-        setHasReviewed(found);
-        setCheckedReview(true);
-      }
     };
+
     fetchReviews();
-  }, [shopId, refreshTrigger, page, session?.user?._id, checkedReview]);
+  }, [shopId, refreshTrigger, page]);
+
+  useEffect(() => {
+    const checkHasReviewed = async () => {
+      if (!session?.user?._id) return;
+
+      const firstPage = await getReviews(shopId, 1);
+      const total = firstPage.totalReviews;
+      const pages = Math.ceil(total / limit);
+
+      let found = false;
+      for (let i = 1; i <= pages && !found; i++) {
+        const pageData = i === 1 ? firstPage : await getReviews(shopId, i);
+        found = pageData.data.some((review: Review) => review.user._id === session.user._id);
+      }
+
+      setHasReviewed(found);
+    };
+
+    checkHasReviewed();
+  }, [shopId, refreshTrigger, session?.user?._id]);
 
   const handleSubmit = async () => {
     if (!session?.user || !session.user.token || rating === null) return;
@@ -171,6 +184,7 @@ export function ReviewSection({ shopId }: { shopId: string }) {
     </Stack>
   );
 }
+
 
 
 function ReviewCard({ data, shopId, onDelete, onEdit }: { data: Review; shopId: string; onDelete: (id: string) => void; onEdit: () => void }) {
