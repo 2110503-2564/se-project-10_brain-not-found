@@ -73,7 +73,7 @@ export function ReviewSection({ shopId }: { shopId: string }) {
       setLoadingReviews(false);
 
       if (session?.user?._id && page === 1 && !checkedReview) {
-        const found = newReviews.some(review => review.user._id === session.user._id);
+        const found = newReviews.some((review: Review) => review.user._id === session.user._id);
         setHasReviewed(found);
         setCheckedReview(true);
       }
