@@ -1,35 +1,9 @@
-'use client'
+import { Box, Typography } from '@mui/material'
 
-import React, { useState, useEffect } from 'react'
-import { Box, Typography, CircularProgress } from '@mui/material'
-
-export default function RequestStatus({ requestId }: { requestId: string }) {
-  const [request, setRequest] = useState<any | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const fetchRequestData = async () => {
-      try {
-        const response = await fetch(`/api/v1/requests/${requestId}`)
-        const data = await response.json()
-        setRequest(data.data)
-      } catch (error) {
-        console.error("Error fetching request data:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchRequestData()
-  }, [requestId])
-
-  if (loading) {
-    return <CircularProgress />
-  }
-
+export default function RequestStatus({ statusText }: { statusText: string }) {
   return (
     <Box>
-      {request && (
+      {/* {request && ( */}
         <Box display="flex" alignItems="center">
           {/* Render Status Color */}
           <Box
@@ -38,9 +12,9 @@ export default function RequestStatus({ requestId }: { requestId: string }) {
               height: 12,
               borderRadius: '50%',
               backgroundColor:
-                request.status === 'pending'
+                statusText === 'pending'
                   ? 'yellow'
-                  : request.status === 'approved'
+                  : statusText === 'approved'
                   ? 'green'
                   : 'red',
               mr: 1,
@@ -48,14 +22,13 @@ export default function RequestStatus({ requestId }: { requestId: string }) {
           />
           {/* Render Status Text */}
           <Typography variant="body2">
-            {request.status === 'pending'
+            {statusText === 'pending'
               ? 'Pending'
-              : request.status === 'approved'
+              : statusText === 'approved'
               ? 'Approved'
               : 'Rejected'}
           </Typography>
         </Box>
-      )}
     </Box>
   )
 }
