@@ -1,4 +1,4 @@
- interface Review { // subject to changes
+ interface Review { 
   _id: string,
   header: string,
   comment: string,
@@ -11,6 +11,24 @@
   },
   createdAt: Date,
   edited?: Date
+}
+
+interface Request {
+  _id: string,
+  user: string,
+  createdAt: Date,
+  shop: ShopItem,
+  status: string,
+  requestType: string,
+  edited?: Date,
+  reason?: string
+}
+
+interface Service {
+  name: string,
+  desc: string,
+  duration: number,
+  price: number
 }
 
 interface SingleShopItem {
@@ -53,7 +71,8 @@ interface SingleShopItem {
     reviewCount?: number,
     averageRating?: number,
     desc: string,
-    id: string
+    id: string,
+    services?: [Service]
   }
 
  interface ShopJson {
