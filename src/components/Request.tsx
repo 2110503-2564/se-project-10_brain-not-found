@@ -145,30 +145,39 @@ export default async function Request() {
           You have no pending requests.
         </div>
       ) : (
+        
         <ul className="space-y-3">
-          {requests.map((request) => (
+        {/* ส่วนหัวข้อ (Header Row) */}
+        {/* ใช้ grid และ grid-cols-5 เพื่อสร้าง 5 คอลัมน์ */}
+        {/* กำหนด gap เพื่อให้ระยะห่างคอลัมน์เท่ากัน */}
+        <div className="grid grid-cols-5 gap-4 text-gray-700 font-semibold border-b pb-2 mb-2">
+            {/* หัวข้อแต่ละคอลัมน์ */}
+            <div>Shop name</div>
+            <div>User</div>
+            <div>Date of Creation</div>
+            <div>Status</div>
+            <div>Reason</div>
+        </div>
+    
+        {/* ส่วนรายการข้อมูล (List of Requests) */}
+        {requests.map((request) => (
             <li
-              key={request._id}
-              className="bg-white border border-gray-200 rounded-lg p-4 shadow hover:shadow-md transition-shadow duration-200"
+                key={request._id}
+                className="bg-white border border-gray-200 rounded-lg p-4 shadow hover:shadow-md transition-shadow duration-200"
             >
-                <p className="font-semibold text-gray-700">
-                ShopName: <span className="font-normal">{request.shop.name}</span>
-              </p>
-              <p className="font-semibold text-gray-700">
-                Date:{" "}
-                <span className="font-normal">
-                  {new Date(request.createdAt).toLocaleDateString()}
-                </span>
-              </p>
-              <p className="font-semibold text-gray-700">
-                User: <span className="font-normal">{request.user.name}</span>
-              </p>
-              <p className="font-semibold text-gray-700">
-                Reason: <span className="font-normal">{request.reason}</span>
-              </p>
+                {/* ส่วนข้อมูลแต่ละรายการ (Data Row) */}
+                {/* **ต้องใช้ grid และ grid-cols-5 และ gap เดียวกันกับส่วนหัวข้อ** */}
+                <div className="grid grid-cols-5 gap-4 text-gray-700">
+                    {/* **แสดงเฉพาะค่าข้อมูลในแต่ละคอลัมน์ โดยไม่ต้องมีป้ายชื่อ** */}
+                    <div>{request.shop?.name}</div>
+                    <div>{request.user.name}</div>
+                    <div>{new Date(request.createdAt).toLocaleDateString()}</div>
+                    <div>{request.status}</div>
+                    <div>{request.reason}</div>
+                </div>
             </li>
-          ))}
-        </ul>
+        ))}
+     </ul>
       )}
     </div>
   );
