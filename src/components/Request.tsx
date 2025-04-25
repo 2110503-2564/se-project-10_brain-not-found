@@ -94,10 +94,12 @@ interface User {
 }
 
 interface RequestItem {
+    shop: ShopItem;
   _id: string;
   user: User; // Changed type to User
   createdAt: Date;
   reason: string;
+  status: string;
   // No other fields needed here
 }
 
@@ -149,6 +151,9 @@ export default async function Request() {
               key={request._id}
               className="bg-white border border-gray-200 rounded-lg p-4 shadow hover:shadow-md transition-shadow duration-200"
             >
+                <p className="font-semibold text-gray-700">
+                ShopName: <span className="font-normal">{request.shop.name}</span>
+              </p>
               <p className="font-semibold text-gray-700">
                 Date:{" "}
                 <span className="font-normal">
