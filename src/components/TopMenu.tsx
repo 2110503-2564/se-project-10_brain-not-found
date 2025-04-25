@@ -24,11 +24,20 @@ export default async function TopMenu() {
         <TopMenuItem title="Home" link="/"/>
         <TopMenuItem title="About" link="/about" />
         <TopMenuItem title="My Booking" link="/mybooking" />
+       
         <TopMenuItem title="Massage" link="/shops"/>
         {
           session?.user.role === 'admin' &&
           <TopMenuItem title="Admin Create Shop" link="/addShopForAdmin"/>
         }
+         {session?.user.role === 'shopOwner' && ( // ตรวจสอบ role ให้ถูกต้อง (shopowner หรือ shopOwner)
+              <>
+                <TopMenuItem title="My Request" link="/myrequest" />
+                <TopMenuItem title="Create Shop" link="/addShop" /> {/* <-- ปรับ link ตามต้องการ */}
+              </>
+            )}
+          
+        
       </div>
 
       <div className="flex items-center space-x-6">

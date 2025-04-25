@@ -109,7 +109,7 @@ export default function BookingForm({ session, shop }: BookingFormProps) {
                 />
             </div>
 
-            <div className="w-full">
+            <div className="w-full flex justify-center">
                 <button
                     className={`block ${
                         session?.user ? "bg-blue-500 hover:bg-blue-600" : "bg-gray-400 cursor-not-allowed"
