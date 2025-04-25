@@ -13,7 +13,7 @@
   edited?: Date
 }
 
-interface Request {
+interface RequestData { 
   _id: string,
   user: string,
   createdAt: Date,
