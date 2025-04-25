@@ -15,7 +15,12 @@
 
 interface RequestData { 
   _id: string,
-  user: string,
+  user: {
+    _id: string,
+    name: string,
+    email?: string,
+    tel?: string
+  }
   createdAt: Date,
   shop: ShopItem,
   status: string,
