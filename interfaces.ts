@@ -11,9 +11,9 @@
   },
   createdAt: Date,
   edited?: Date
- }
+}
 
- interface SingleShopItem {
+interface SingleShopItem {
   success: boolean;
   data: ShopItem;
 }
