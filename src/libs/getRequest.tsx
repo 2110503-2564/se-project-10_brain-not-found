@@ -1,5 +1,5 @@
 export default async function getRequest(id: string, token: string) {
-    const response = await fetch(`${process.env.BACKEND_URL}/api/v1/request/${id}`, {
+    const response = await fetch(`${process.env.BACKEND_URL}/api/v1/requests/${id}`, {
         method: 'GET',
         headers: {
             Authorization: `Bearer ${token}`,
