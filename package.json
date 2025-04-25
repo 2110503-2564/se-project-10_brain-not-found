@@ -13,6 +13,7 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
+    "@google-cloud/storage": "^7.16.0",
     "@mui/icons-material": "^5.17.1",
     "@mui/material": "^5.17.1",
     "@mui/x-date-pickers": "^7.13.0",
@@ -28,7 +29,9 @@
     "react": "^18",
     "react-dom": "^18",
     "react-redux": "^9.1.2",
-    "redux-persist": "^6.0.0"
+    "redux-persist": "^6.0.0",
+    "uuid": "^11.1.0",
+    "web-streams-node": "^0.4.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
