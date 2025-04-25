@@ -4,7 +4,7 @@ export default async function getRequests(token :string) {
         headers: {
             Authorization: `Bearer ${token}`
         },
-        next : {tags:[`request`]}
+        next : {tags:[`requests`]}
     });
 
     if (!response.ok) {
