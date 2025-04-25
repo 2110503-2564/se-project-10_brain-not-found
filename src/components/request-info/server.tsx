@@ -12,11 +12,9 @@ export async function RequestInfo({ id, session }: { id: string; session: Sessio
   const { data: request } = requestJSON;
   const { shop, user } = request;
 
-
-
   return <>
-    <Grid container direction="row-reverse" spacing={4} sx={{ flexGrow: 1 }}>
-      <Grid item xs={12} md={6}>  {/* TODO: Multiple image support */}
+    <div className="grid xs:grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="xs:order-1 md:order-2">  {/* TODO: Multiple image support */}
       <Paper elevation={5}>
         <Image
             width={400}
@@ -25,8 +23,8 @@ export async function RequestInfo({ id, session }: { id: string; session: Sessio
             src={`/${shop.picture[0]}`}
             alt={shop.name}/>
       </Paper>
-      </Grid>
-      <Grid item xs={12} md={6}>
+      </div>
+      <div className="xs:order-2 md:order-1 md:row-span-3">
           <Stack spacing={3}>
               <Typography variant="h5" component="h2">
                   {shop.name}
@@ -79,8 +77,8 @@ export async function RequestInfo({ id, session }: { id: string; session: Sessio
                     }
                 </Stack>
           </Stack>
-      </Grid>
-      <Grid item xs={12} md={6}>
+      </div>
+      <div className="order-3">
         <Stack spacing={3} width="90%">
             <Box>
                 <Typography>Shop Owner: {user.name}</Typography>
@@ -89,9 +87,9 @@ export async function RequestInfo({ id, session }: { id: string; session: Sessio
             </Box>
             
         </Stack>
-      </Grid>
+      </div>
 
-    </Grid>
+    </div>
   </>;
 }
 
