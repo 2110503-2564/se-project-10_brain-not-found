@@ -75,16 +75,16 @@ export default function AdminRequestMenu({ onApprove, onReject }: RequestMenuPro
   return (
     <>
       {/* menu button (3 จุด) */}
-      <IconButton onClick={handleClickMenu}> 
+      <IconButton onClick={(e)=>{e.stopPropagation();handleClickMenu(e);}}> 
         <MoreVertIcon />
       </IconButton>
 
       {/* เมนูเมื่อกดเปิด (แก้สีใน className) */}
-      <Menu disableScrollLock anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleCloseMenu}>
-        <MenuItem onClick={handleClickApprove} className="!text-green-600 hover:!bg-green-50 w-full text-left">
+      <Menu disableScrollLock anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleCloseMenu} onClick={(e) => {e.stopPropagation();handleCloseMenu();}}>
+        <MenuItem onClick={(e)=>{e.stopPropagation();handleClickApprove();}} className="!text-green-600 hover:!bg-green-50 w-full text-left">
           Approve
         </MenuItem>
-        <MenuItem onClick={handleClickReject} className="!text-red-600 hover:!bg-red-50 w-full text-left">
+        <MenuItem onClick={(e)=>{e.stopPropagation();handleClickReject();}} className="!text-red-600 hover:!bg-red-50 w-full text-left">
           Reject
         </MenuItem>
       </Menu>
@@ -100,8 +100,8 @@ export default function AdminRequestMenu({ onApprove, onReject }: RequestMenuPro
           <DialogContentText>Are you sure you want to approve this request?</DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenApproveDialog(false)} disabled={isSubmitting}>Cancel</Button>
-          <Button color="success" onClick={handleConfirmApprove} disabled={isSubmitting}>
+          <Button onClick={(e) => {e.stopPropagation();setOpenApproveDialog(false)}} disabled={isSubmitting}>Cancel</Button>
+          <Button color="success" onClick={(e)=>{e.stopPropagation();handleConfirmApprove()}} disabled={isSubmitting}>
             {isSubmitting ? 'Approving...' : 'Approve'}
           </Button>
         </DialogActions>
@@ -114,7 +114,7 @@ export default function AdminRequestMenu({ onApprove, onReject }: RequestMenuPro
         }}
       >
         <DialogTitle>Reject Request</DialogTitle>
-        <DialogContent>
+        <DialogContent onClick={(e: React.MouseEvent) => {e.stopPropagation();}}>
           <TextField
             disabled={isSubmitting} 
             autoFocus
@@ -131,8 +131,8 @@ export default function AdminRequestMenu({ onApprove, onReject }: RequestMenuPro
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseRejectDialog} disabled={isSubmitting}>Cancel</Button>
-          <Button color="error" onClick={handleConfirmReject} disabled={isSubmitting}>
+          <Button onClick={(e)=>{e.stopPropagation();handleCloseRejectDialog();}} disabled={isSubmitting}>Cancel</Button>
+          <Button color="error" onClick={(e)=>{e.stopPropagation();handleConfirmReject();}} disabled={isSubmitting}>
             {isSubmitting ? 'Rejecting...' : 'Reject'}
           </Button>
         </DialogActions>

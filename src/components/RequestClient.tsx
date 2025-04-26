@@ -178,7 +178,10 @@ export default function RequestClient({ requests, role, token }: RequestClientPr
                         }
                         `}
                       title="View/Edit Reason" // Accessibility title
-                      onClick={() => handleOpenModal(request._id, request.reason)} // Use updated handler
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent triggering parent li click
+                        handleOpenModal(request._id, request.reason)
+                      }} // Use updated handler
                     />
                   ) : (
                     // Placeholder for alignment if no reason

@@ -80,15 +80,15 @@ export default function ShopOwnerRequestMenu({ requestId }: ShopOwnerRequestMenu
 
   return (
     <>
-      <IconButton onClick={handleClickMenu}>
+      <IconButton onClick={(e)=>{e.stopPropagation();handleClickMenu(e);}}>
         <MoreVertIcon />
       </IconButton>
 
-      <Menu disableScrollLock anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleCloseMenu}>
-        <MenuItem onClick={handleClickEdit} className="!text-blue-600 hover:!bg-blue-50 w-full text-left">
+      <Menu disableScrollLock anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleCloseMenu} onClick={(e) => {e.stopPropagation();handleCloseMenu();}}>
+        <MenuItem onClick={(e)=>{e.stopPropagation();handleClickEdit();}} className="!text-blue-600 hover:!bg-blue-50 w-full text-left">
           Edit
         </MenuItem>
-        <MenuItem onClick={handleClickCancel} className="!text-red-600 hover:!bg-red-50 w-full text-left">
+        <MenuItem onClick={(e)=>{e.stopPropagation();handleClickCancel();}} className="!text-red-600 hover:!bg-red-50 w-full text-left">
           Cancel
         </MenuItem>
       </Menu>
@@ -103,8 +103,8 @@ export default function ShopOwnerRequestMenu({ requestId }: ShopOwnerRequestMenu
           <DialogContentText>Are you sure you want to cancel this request?</DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenCancelDialog(false)} disabled={isSubmitting}>Back</Button>
-          <Button color="error" onClick={handleConfirmCancel} disabled={isSubmitting}>
+          <Button onClick={(e) => {e.stopPropagation();setOpenCancelDialog(false);}} disabled={isSubmitting}>Back</Button>
+          <Button color="error" onClick={(e)=>{e.stopPropagation();handleConfirmCancel();}} disabled={isSubmitting}>
             {isSubmitting ? 'Cancelling...' : 'Cancel'}
           </Button>
         </DialogActions>
