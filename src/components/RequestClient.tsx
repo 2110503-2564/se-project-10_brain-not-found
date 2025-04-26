@@ -168,9 +168,14 @@ export default function RequestClient({ requests, role, token }: RequestClientPr
                 {/* Reason Icon and Actions Dropdown (Layout from HEAD) */}
                 <div className="flex justify-center items-center gap-2">
                   {/* Show icon only if reason exists */}
-                  {request.reason ? (
+                  {request.reason&& request.status !== 'approved' ? (
                     <ExclamationTriangleIcon
-                      className="h-5 w-5 text-red-600 cursor-pointer hover:text-red-800"
+                      className={`h-5 w-5 cursor-pointer 
+                        ${
+                          request.status === 'pending' ? 'text-neutral-500 hover:text-neutral-700' :
+                           'text-red-600 hover:text-red-800'
+                        }
+                        `}
                       title="View/Edit Reason" // Accessibility title
                       onClick={() => handleOpenModal(request._id, request.reason)} // Use updated handler
                     />

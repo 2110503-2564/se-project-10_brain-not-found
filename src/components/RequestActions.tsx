@@ -14,7 +14,7 @@ export default function RequestActions({ requestId, isShopOwner, role, status }:
   const [isOpen, setIsOpen] = useState(false);
 
   // ถ้า status เป็น pending หรือ approved ไม่ต้องแสดงอะไรเลย
-  if (status === "pending" || status === "approved") {
+  if (status === "approved") {
     return null;
   }
 
