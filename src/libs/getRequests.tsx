@@ -15,4 +15,3 @@ export default async function getRequests(token: string, filter?: string) {
   
     return await response.json();
   }
-  

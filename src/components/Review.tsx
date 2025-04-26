@@ -147,7 +147,7 @@ export function ReviewSection({ shopId }: { shopId: string }) {
       )}
 
       {/* Conditionally render the Create Review Form */}
-      {session?.user?.token && session.user.role !== "admin" && !hasReviewed && (
+      {session?.user?.token && session.user.role === "user" && !hasReviewed && (
         <Stack spacing={2} sx={{ border: "1px solid #ccc", p: 3, borderRadius: 2 }}>
           <Typography variant="h6">Write a Review</Typography>
           <Rating value={rating} onChange={(e, newValue) => setRating(newValue)} />
