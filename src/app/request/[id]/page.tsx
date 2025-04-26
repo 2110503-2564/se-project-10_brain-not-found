@@ -1,17 +1,16 @@
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 import { RequestInfo } from "@/components/request-info/server";
-import { Typography } from "@mui/material";
+import { LinearProgress, Typography } from "@mui/material";
 import { orange } from "@mui/material/colors";
 import { getServerSession, Session } from "next-auth";
+import { getSession } from "next-auth/react";
 import { Suspense } from "react";
 
-export default async function RequestInfoPage({
+export default function RequestInfoPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user.token) return null;
 
   return (
     <>
@@ -20,12 +19,12 @@ export default async function RequestInfoPage({
         component="h1"
         align="center"
         gutterBottom
-        sx={{ color: orange[800], fontWeight: "bold", mb: 5 }}
+        sx={{ color: orange[800], fontWeight: "bold", mb: 8 }}
       >
         Shop Request
       </Typography>
-      <Suspense>
-        <RequestInfo id={params.id} session={session} />
+      <Suspense fallback={<LinearProgress/>}>
+        <RequestInfo id={params.id} />
       </Suspense>
     </>
   );
