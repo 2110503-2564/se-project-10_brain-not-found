@@ -12,13 +12,19 @@ export async function RequestInfo({ id, session }: { id: string; session: Sessio
   const { data: request } = requestJSON;
   const { shop, user } = request;
 
+  const InfoText = (props: any) => {
+    return <Typography variant="h6" component="h3">
+        {props}
+    </Typography>
+  }
+
   return <>
     <div className="grid xs:grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="xs:order-1 md:order-2">  {/* TODO: Multiple image support */}
-      <Paper elevation={5}>
+      <div className="xs:order-1 md:order-2 place-self-center">  {/* TODO: Multiple image support */}
+      <Paper elevation={5} sx={{width: 350, height: 350, mb: 4}}>
         <Image
-            width={400}
-            height={400}
+            width={350}
+            height={350}
             objectFit="cover"
             src={`/${shop.picture[0]}`}
             alt={shop.name}/>
@@ -69,19 +75,21 @@ export async function RequestInfo({ id, session }: { id: string; session: Sessio
                 <Typography variant="h6" component="h3">
                     Services ({shop.services?.length})
                 </Typography>
-                <Stack spacing={1} width="90%">
-                    {
-                        shop.services?.map((service, index)=>(
-                            <ServiceCard service={service} key={index}/> 
-                        ))
-                    }
-                </Stack>
+                { shop.services ?
+                    <Stack spacing={1} width="90%">
+                        {
+                            shop.services?.map((service, index)=>(
+                                <ServiceCard service={service} key={index}/> 
+                            ))
+                        }
+                    </Stack> : <Typography>No service listed</Typography>
+                }
           </Stack>
       </div>
-      <div className="order-3">
-        <Stack spacing={3} width="90%">
+      <div className="order-3 md:text-center">
+        <Stack spacing={3}>
             <Box>
-                <Typography>Shop Owner: {user.name}</Typography>
+            <Typography>Shop Owner: {user.name}</Typography>
             <Typography>Email: {user.email}</Typography>
             <Typography>Tel: {user.tel}</Typography>
             </Box>
