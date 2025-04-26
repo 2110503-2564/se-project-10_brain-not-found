@@ -34,5 +34,5 @@ export default async function RequestServer({ searchParams }: { searchParams: { 
     return <div className="p-5 text-center text-red-500">{errorMessage}</div>;
   }
 
-  return <RequestClient requests={requests} isShopOwner={session.user.role === "shopOwner"} />;
+  return <RequestClient requests={requests} role={session.user.role} token={session.user.token}/>;
 }
