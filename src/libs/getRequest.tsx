@@ -4,7 +4,7 @@ export default async function getRequest(id: string, token: string) {
         headers: {
             Authorization: `Bearer ${token}`,
         },
-        next: { tags: [`request-${id}`] },
+        cache: "no-store"
     });
   
     if (!response.ok) {
