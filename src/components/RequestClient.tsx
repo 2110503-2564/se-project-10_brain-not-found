@@ -61,7 +61,23 @@ export default function RequestClient({ requests, isShopOwner }: RequestClientPr
                 <div className="mr-3 text-center">{request.shop?.name}</div>
                 <div className="text-center">{request.user.name}</div>
                 <div className="text-center">{new Date(request.createdAt).toLocaleDateString()}</div>
-                <div className="text-center">{request.status}</div>
+                <div className="text-center">
+                <span
+                  className={`
+                    inline-block px-3 py-1 rounded-full text-sm font-medium
+                    ${
+                      request.status === "approved"
+                        ? "bg-green-100 text-green-800"
+                        : request.status === "rejected"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-gray-100 text-gray-800"
+                    }
+                  `}
+                >
+                  {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                </span>
+              </div>
+
 
                 <div className="flex space-x-2 items-center justify-center mr-20">
                   {request.reason ? (
