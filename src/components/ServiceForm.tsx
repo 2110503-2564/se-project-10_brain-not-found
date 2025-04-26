@@ -4,21 +4,15 @@
 import React, { useState } from 'react';
 
 // Interface สำหรับข้อมูล Service (อาจจะ import มาจากที่เดียวกับ Form หลัก)
-interface ServiceData {
-  name: string;
-  description: string;
-  price: string; // หรือ number
-  duration: string;
-}
 
 interface ServiceInputProps {
-  onAddService: (serviceData: ServiceData) => void; // Callback function
+  onAddService: (serviceData: ServiceBase) => void; // Callback function
 }
 
 const ServiceForm: React.FC<ServiceInputProps> = ({ onAddService }) => {
-  const [newService, setNewService] = useState<ServiceData>({
+  const [newService, setNewService] = useState<ServiceBase>({
     name: '',
-    description: '',
+    desc: '',
     price: '',
     duration: '',
   });
@@ -36,7 +30,7 @@ const ServiceForm: React.FC<ServiceInputProps> = ({ onAddService }) => {
     }
     onAddService(newService); // ส่งข้อมูลกลับไปให้ Parent
     // Reset form
-    setNewService({ name: '', description: '', price: '', duration: '' });
+    setNewService({ name: '', desc: '', price: '', duration: '' });
   };
 
   return (
@@ -60,9 +54,9 @@ const ServiceForm: React.FC<ServiceInputProps> = ({ onAddService }) => {
         <input
           type="text"
           id="serviceDescriptionInput"
-          name="description"
+          name="desc"
           placeholder="คำอธิบายบริการ (optional)"
-          value={newService.description}
+          value={newService.desc}
           onChange={handleInputChange}
           className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
         />

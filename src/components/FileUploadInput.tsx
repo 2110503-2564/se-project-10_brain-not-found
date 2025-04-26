@@ -1,16 +1,17 @@
 // src/components/FileInput.tsx
-'use client'; // จำเป็นถ้ามีการใช้ state ภายใน หรือ event handlers ที่ซับซ้อน
+'use client';
 
 import React from 'react';
 
 interface FileInputProps {
   id: string;
-  name: string; // สำคัญสำหรับ FormData
-  label: string; // ข้อความบนปุ่ม/หัวข้อ
-  accept?: string; // ประเภทไฟล์ที่อนุญาต
-  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void; // Handler จาก Parent
-  fileName?: string | null; // ชื่อไฟล์ที่เลือก (ส่งมาจาก Parent)
+  name: string;
+  label: string;
+  accept?: string;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  fileName?: string | null; // ชื่อไฟล์/ข้อความสรุปที่เลือก (ส่งมาจาก Parent)
   required?: boolean;
+  multiple?: boolean; // Prop สำหรับเปิด/ปิดการเลือกหลายไฟล์
 }
 
 const FileUploadInput: React.FC<FileInputProps> = ({
@@ -21,6 +22,7 @@ const FileUploadInput: React.FC<FileInputProps> = ({
   onChange,
   fileName,
   required = false,
+  multiple = false, // ค่า default เป็น false
 }) => {
   return (
     <div>
@@ -29,7 +31,7 @@ const FileUploadInput: React.FC<FileInputProps> = ({
       </label>
       <label
         htmlFor={id}
-        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer w-full justify-center sm:w-auto" // Responsive width
+        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer w-full justify-center sm:w-auto"
       >
         {/* ไอคอนอัปโหลด */}
         <svg xmlns="http://www.w3.org/2000/svg" className="-ml-1 mr-2 h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
@@ -42,12 +44,13 @@ const FileUploadInput: React.FC<FileInputProps> = ({
           id={id}
           name={name}
           accept={accept}
-          onChange={onChange} // ใช้ handler จาก parent
-          className="sr-only" // ซ่อน input จริง
-          required={required && !fileName} // Required ถ้ายังไม่มีไฟล์ถูกเลือก
+          onChange={onChange}
+          className="sr-only"
+          required={required && !fileName}
+          multiple={multiple} // ใส่ attribute multiple ตาม prop ที่ได้รับ
         />
       </label>
-      {/* แสดงชื่อไฟล์ที่เลือก */}
+      {/* แสดงชื่อไฟล์/ข้อความสรุปที่เลือก */}
       {fileName && (
         <p className="mt-2 text-sm text-gray-600 truncate">
           Selected: {fileName}
