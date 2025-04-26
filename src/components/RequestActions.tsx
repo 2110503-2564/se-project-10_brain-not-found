@@ -1,6 +1,8 @@
 'use client'
 
 import AdminRequestMenu from "./adminRequestHandlingComponent/AdminRequestMenu";
+import ShopOwnerRequestMenu from "./shopOwnerRequestHandlingComponent/ShopOwnerRequestMenu";
+
 
 interface RequestActionsProps {
   requestId: string;
@@ -25,7 +27,7 @@ export default function RequestActions({ requestId, isShopOwner, role, status }:
         <AdminRequestMenu onApprove={() => {}} onReject={() => {}} />
       ) : role === "shopOwner" ? (
         //TODO: implement shopOwner menu component instead 'null'
-        'null'
+        <ShopOwnerRequestMenu requestId={requestId} />
       ) : (
         null
       )}
