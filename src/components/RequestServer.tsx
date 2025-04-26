@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 import RequestClient from "./RequestClient";
 
-export default async function RequestServer() {
+export default async function RequestServer({ searchParams }: { searchParams: { filter?: string } }) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user || !session.user.token) {
@@ -16,9 +16,10 @@ export default async function RequestServer() {
 
   let requests = [];
   let errorMessage = null;
+  const filter = searchParams.filter || "all"; // ใช้ค่า filter จาก query หรือกำหนดเป็น "all" ถ้าไม่มีค่า
 
   try {
-    const requestData = await getRequests(session.user.token);
+    const requestData = await getRequests(session.user.token, filter);
     if (requestData?.data) {
       requests = requestData.data;
     } else {
