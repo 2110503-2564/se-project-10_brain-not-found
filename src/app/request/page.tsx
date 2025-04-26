@@ -1,22 +1,33 @@
-import Request from "@/components/Request";
+import Request from "@/components/RequestClient";
 import getRequests from "@/libs/getRequests";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../api/auth/[...nextauth]/authOptions";
 import { redirect } from "next/navigation";
 
-export default async function MyRequestPage() {
+export default async function MyRequestPage({
+  searchParams,
+}: {
+  searchParams: { filter?: string };
+}) {
   const session = await getServerSession(authOptions);
+
   if (!session || !session.user.token) {
-    redirect("/mybooking");
+    redirect("/"); // ถ้าไม่มี session หรือ token จะให้ไปหน้าอื่น
   }
 
-  // Get initial request data
-  const requestData = await getRequests(session.user.token, "all");
+  const filter = searchParams.filter || "all";
+
+  // ดึงข้อมูล request จาก API โดยส่ง filter เข้าไป
+  const requestData = await getRequests(session.user.token, filter);
+  const requests = requestData?.data || [];
 
   return (
-    <main className="p-5">
-      <h1 className="text-2xl font-bold text-center mb-6">Your Requests</h1>
-      <Request initialRequests={requestData?.data || []} token={session.user.token} />
+    <main>
+      {/* ส่งข้อมูล requests ไปยัง Request component */}
+      <Request
+        requests={requests}
+        isShopOwner={session.user.role === "shopOwner"}
+      />
     </main>
   );
 }
