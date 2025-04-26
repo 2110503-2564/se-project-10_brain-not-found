@@ -87,11 +87,11 @@ interface SingleShopItem {
   }
 
   interface RequestItem { 
-  _id?: string,
+  _id: string,
   shop: ShopItemForRequest,
   user: User,     //user ID
   createdAt: Date,
-  reason?: string,
+  reason: string | "",
   status: string,
   requestType: string,
 }

@@ -28,7 +28,7 @@ export default async function TopMenu() {
         <TopMenuItem title="Massage" link="/shops"/>
         {
           session?.user.role === 'admin' &&
-          <TopMenuItem title="Admin Create Shop" link="/addShopForAdmin"/>
+          <TopMenuItem title="Request" link="/request" />
         }
          {session?.user.role === 'shopOwner' && ( // ตรวจสอบ role ให้ถูกต้อง (shopowner หรือ shopOwner)
               <>
