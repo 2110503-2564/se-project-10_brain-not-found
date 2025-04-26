@@ -143,6 +143,7 @@ export default function RequestClient({ requests, role, token }: RequestClientPr
             <li
               key={request._id}
               className="bg-white border border-gray-200 rounded-lg p-4 shadow hover:shadow-md transition-shadow duration-200"
+              onClick={() => router.push(`request/${request._id}`)} //Naviagate to request info page
             >
               <div className="grid grid-cols-5 gap-8 text-gray-700 items-center">
                 {/* Use optional chaining and provide fallback 'N/A' */}
