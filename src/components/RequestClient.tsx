@@ -62,10 +62,10 @@ export default function RequestClient({ requests, isShopOwner }: RequestClientPr
         <ul className="space-y-3">
           {/* Header Row */}
           <div className="grid grid-cols-5 gap-8 text-gray-700 font-semibold border-b pb-2 mb-4">
-            <div>Shop name</div>
-            <div>User</div>
-            <div>Date of Creation</div>
-            <div>Status</div>
+            <div className="text-center">Shop name</div>
+            <div className="text-center">User</div>
+            <div className="text-center">Date of Creation</div>
+            <div className="text-center mr-4">Status</div>
           </div>
 
           {/* Request Items */}
@@ -75,19 +75,24 @@ export default function RequestClient({ requests, isShopOwner }: RequestClientPr
               className="bg-white border border-gray-200 rounded-lg p-4 shadow hover:shadow-md transition-shadow duration-200"
             >
               <div className="grid grid-cols-5 gap-8 text-gray-700">
-                <div className="ml-4">{request.shop?.name}</div>
-                <div>{request.user.name}</div>
-                <div>{new Date(request.createdAt).toLocaleDateString()}</div>
-                <div>{request.status}</div>
+                <div className="mr-3 text-center">{request.shop?.name}</div>
+                <div className="text-center">{request.user.name}</div>
+                <div className="text-center">{new Date(request.createdAt).toLocaleDateString()}</div>
+                <div className="text-center">{request.status}</div>
 
                 <div className="flex space-x-2 items-center justify-center mr-20">
-                  {request.reason && (
+                  {request.reason ? (
+                    // Render the icon if reason exists (e.g., status is 'rejected')
                     <div className="relative group">
                       <ExclamationTriangleIcon
                         className="h-5 w-5 text-red-600 cursor-pointer"
                         onClick={() => handleOpenModal(request.reason)} // เปิดโมดัลเมื่อคลิก
                       />
                     </div>
+                  ) : (
+                    // Render an invisible placeholder div with the same size if no reason (e.g., status is 'pending')
+                    // This reserves the space so the alignment is consistent
+                    <div className="h-5 w-5 invisible"></div>
                   )}
                   <RequestActions requestId={request._id} isShopOwner={isShopOwner} />
                 </div>
