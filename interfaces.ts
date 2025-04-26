@@ -33,7 +33,8 @@ interface ServiceData {
   name: string,
   desc: string,
   duration: string,
-  price: string
+  price: string,
+  id: string
 }
 
 interface SingleShopItem {
@@ -78,7 +79,8 @@ interface SingleShopItem {
     desc: string,
     id: string,
     services?: [ServiceData],
-    shopType: string
+    shopType: string,
+    certificate: string
   }
 
  interface ShopJson {
