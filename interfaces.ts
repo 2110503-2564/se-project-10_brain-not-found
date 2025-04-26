@@ -20,7 +20,7 @@ interface RequestData {
     name: string,
     email?: string,
     tel?: string
-  }
+  },
   createdAt: Date,
   shop: ShopItem,
   status: string,
@@ -29,11 +29,11 @@ interface RequestData {
   reason?: string
 }
 
-interface Service {
+interface ServiceData {
   name: string,
   desc: string,
-  duration: number,
-  price: number
+  duration: string,
+  price: string
 }
 
 interface SingleShopItem {
@@ -77,7 +77,8 @@ interface SingleShopItem {
     averageRating?: number,
     desc: string,
     id: string,
-    services?: [Service]
+    services?: [ServiceData],
+    shopType: string
   }
 
  interface ShopJson {
