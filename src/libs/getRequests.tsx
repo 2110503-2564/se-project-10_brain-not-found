@@ -1,4 +1,4 @@
-export default async function getRequests(token: string, filter: string) {
+export default async function getRequests(token: string, filter?: string) {
     const url = filter === "all"
       ? `${process.env.BACKEND_URL}/api/v1/requests`
       : `${process.env.BACKEND_URL}/api/v1/requests?status=${filter}`;

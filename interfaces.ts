@@ -55,7 +55,7 @@ interface SingleShopItem {
     desc: string,
     id: string
   }
-  
+
  interface ShopJson {
     success: boolean,
     count: number,
@@ -85,3 +85,51 @@ interface SingleShopItem {
     shop: ShopItem,
     createAt: Date,
   }
+
+  interface RequestItem { 
+  _id: string,
+  shop: ShopItemForRequest,
+  user: User,     //user ID
+  createdAt: Date,
+  reason: string | "",
+  status: string,
+  requestType: string,
+}
+interface RequestItemToCreateShop { 
+  shop: ShopItemForRequest,
+  user: User,     //user ID
+  requestType: string,
+}
+
+interface ShopItemForRequest {
+  name: string,
+  address: string,
+  district: string,
+  province: string,
+  postalcode: string,
+  tel: string,
+  picture: string[],
+  region:string,
+  openTime:string,
+  closeTime:string,
+  desc: string,
+  shopType:string,
+  services?:ServiceBase[],
+  certificate?:string
+}
+interface ServiceBase {
+  name: string;
+  desc: string;
+  price: string;
+  duration: string;
+}
+interface Service extends ServiceBase {
+  id: string; // ใช้ ID ชั่วคราวจาก crypto.randomUUID()
+}
+
+interface User {
+  _id: string,
+  name: string,
+  // email: string,
+  // role: string
+}

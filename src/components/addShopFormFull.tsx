@@ -1,27 +1,19 @@
-// src/components/CreateShopForm.tsx (เปลี่ยนชื่อไฟล์ตามต้องการ)
+// src/components/addShopFormFull.tsx
 'use client';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation'; // ใช้สำหรับ redirect หลัง submit สำเร็จ
-
-// Import Components ย่อย
+// --- Import Components ย่อย ---
 import ServiceList from './ServiceList';
 import FileUploadInput from './FileUploadInput';
 import ServiceForm from './ServiceForm';
 
-// Import Server Action (ตัวอย่าง)
-// import { createShopAction } from '@/actions/shopActions'; // สร้างไฟล์ action แยก
+// --- Import API functions ---
+import createShopRequest from '@/libs/createShopRequest'; // Adjust path if needed
+import { uploadFileToGCSAction } from '@/libs/gcsUpload'; // Adjust path if needed
 
-// --- Interfaces (ควรแยกไปไฟล์ types.ts) ---
-interface Service {
-  id: string; // ใช้ ID ชั่วคราวจาก crypto.randomUUID()
-  name: string;
-  description: string;
-  price: string;
-  duration: string;
-}
-
-interface ShopFormData {
+interface CreateShopFormData {
     shopName: string;
     phoneNumber: string;
     shopType: string;
@@ -31,16 +23,17 @@ interface ShopFormData {
     province: string;
     district: string;
     description: string;
-    openCloseTime: string; // อาจจะต้องปรับปรุงการจัดการเวลา
-    services: Service[];
-    shopImageFile: File | null;
-    licenseDocFile: File | null;
-  }
-// --- End Interfaces ---
+    openTime: string;
+    closeTime: string;
+    services: Service[]; // Keep client-side ID for list management
+    shopImageFiles: File[]; // Changed to array for multiple files
+    licenseDocFile: File | null; // Keep as single file for now, adjust if needed
+}
 
-const CreateShopForm: React.FC = () => {
-  const router = useRouter(); // Initialize router
-  const [formData, setFormData] = useState<ShopFormData>({
+const CreateShopRequestForm: React.FC = () => {
+  const router = useRouter();
+  const { data: session } = useSession();
+  const [formData, setFormData] = useState<CreateShopFormData>({
     shopName: '',
     phoneNumber: '',
     shopType: '',
@@ -50,38 +43,64 @@ const CreateShopForm: React.FC = () => {
     province: '',
     district: '',
     description: '',
-    openCloseTime: '', // ต้องหาวิธีจัดการ Input เวลานี้ให้ดีขึ้น
+    openTime: '',
+    closeTime: '',
     services: [],
-    shopImageFile: null,
+    shopImageFiles: [], // Initialize as empty array
     licenseDocFile: null,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Redirect if not logged in or not a shopOwner
+  useEffect(() => {
+    // Add a check for session loading state if needed
+    if (session === null) return; // Still loading or unauthenticated
+
+    if (!session || session.user.role !== 'shopOwner') {
+      // setError('You must be logged in as a Shop Owner to create a request.');
+      // setTimeout(() => router.push('/'), 3000);
+      router.push('/');
+    }
+  }, [session, router]);
+
 
   // --- Handlers ---
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setError(null); // Clear error on input change
+    setError(null);
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, files } = e.target;
-    setError(null); // Clear error on file change
+    setError(null);
+
     if (files && files.length > 0) {
-      setFormData((prev) => ({ ...prev, [`${name}File`]: files[0] }));
+      if (name === 'shopImageFiles') { // Handle multiple files for shop images
+        setFormData((prev) => ({
+          ...prev,
+          shopImageFiles: Array.from(files), // Convert FileList to Array
+        }));
+      } else { // Handle single file for other inputs (like license)
+        setFormData((prev) => ({ ...prev, [name]: files[0] }));
+      }
     } else {
-      // Optional: Clear file if user cancels selection
-      // setFormData((prev) => ({ ...prev, [`${name}File`]: null }));
+      // Clear the specific file input state
+       if (name === 'shopImageFiles') {
+            setFormData((prev) => ({ ...prev, shopImageFiles: [] }));
+       } else {
+            setFormData((prev) => ({ ...prev, [name]: null }));
+       }
     }
   };
 
   const handleAddService = (newServiceData: Omit<Service, 'id'>) => {
     setError(null);
     const serviceToAdd: Service = {
-      id: crypto.randomUUID(), // Generate temporary client-side ID
+      id: crypto.randomUUID(),
       ...newServiceData,
     };
     setFormData((prev) => ({
@@ -100,70 +119,139 @@ const CreateShopForm: React.FC = () => {
 
   // --- Submit Handler ---
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); // Prevent default form submission
+    event.preventDefault();
     setIsSubmitting(true);
     setError(null);
 
-    // --- สร้าง FormData สำหรับส่งไป Server Action ---
-    const dataToSend = new FormData();
-    dataToSend.append('shopName', formData.shopName);
-    dataToSend.append('phoneNumber', formData.phoneNumber);
-    dataToSend.append('shopType', formData.shopType);
-    dataToSend.append('address', formData.address);
-    dataToSend.append('postalcode', formData.postalcode);
-    dataToSend.append('region', formData.region);
-    dataToSend.append('province', formData.province);
-    dataToSend.append('district', formData.district);
-    dataToSend.append('description', formData.description);
-    dataToSend.append('openCloseTime', formData.openCloseTime); // ส่งค่าเวลาไปก่อน
-
-    // Append files if they exist
-    if (formData.shopImageFile) {
-      dataToSend.append('shopImage', formData.shopImageFile); // ชื่อต้องตรงกับที่ Server Action คาดหวัง
-    }
-    if (formData.licenseDocFile) {
-      dataToSend.append('licenseDoc', formData.licenseDocFile); // ชื่อต้องตรงกับที่ Server Action คาดหวัง
+    // --- Authentication Check ---
+    if (!session || !session.user || !session.user.token || session.user.role !== 'shopOwner') {
+      setError('Authentication failed or insufficient permissions.');
+      setIsSubmitting(false);
+      return;
     }
 
-    // Append services (convert array to JSON string)
-    // Server Action จะต้อง parse JSON นี้กลับ
-    dataToSend.append('services', JSON.stringify(formData.services.map(({ id, ...rest }) => rest))); // ส่งเฉพาะข้อมูล ไม่ต้องส่ง ID ชั่วคราว
+    let pictureUrls: string[] = []; // Array for multiple image URLs
+    let certificateUrl: string | undefined = undefined; // Single URL for license/certificate
 
     try {
-      // --- เรียก Server Action ---
-      // const result = await createShopAction(dataToSend); // สมมติว่ามี Action นี้
+      // --- 1. Upload Shop Images (Multiple) ---
+      if (formData.shopImageFiles.length > 0) {
+        console.log(`Uploading ${formData.shopImageFiles.length} shop image(s)...`);
+        // Use Promise.all to upload files concurrently
+        const uploadFormData = new FormData();
+        const uploadPromises = formData.shopImageFiles.map(async (file) => {
+          uploadFormData.append('file', file); // Add the file
+          uploadFormData.append('folder', 'shop_pictures'); // Add the folder info
+          // Optionally add allowedTypes and maxSize if needed by the action
+          // uploadFormData.append('allowedTypes', 'image/jpeg,image/png,image/gif');
+          // uploadFormData.append('maxSize', (5 * 1024 * 1024).toString());
 
-      // --- จำลองการทำงาน ---
-      console.log('Submitting FormData:', Object.fromEntries(dataToSend.entries()));
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
-      const result = { success: true, message: 'Shop created successfully!', shopId: '12345' }; // Mock result
-      // const result = { success: false, message: 'Failed to create shop: Invalid data' }; // Mock error result
-      // --- จบส่วนจำลอง ---
+          // Call the Server Action with FormData
+          const url = await uploadFileToGCSAction(uploadFormData);
+          return url;
+        });
+        pictureUrls = await Promise.all(uploadPromises);
+        console.log("Shop images uploaded via Server Action:", pictureUrls);
+      }
 
+      // --- 2. Upload License Document (Single) ---
+      if (formData.licenseDocFile) {
+        try {
+          console.log("Uploading license document via Server Action...");
+          // Create FormData for the license file
+          const uploadFormData = new FormData();
+          uploadFormData.append('file', formData.licenseDocFile);
+          uploadFormData.append('folder', 'certificates');
+          // Optionally add allowedTypes and maxSize
+          // uploadFormData.append('allowedTypes', 'application/pdf,image/jpeg,image/png');
+          // uploadFormData.append('maxSize', (2 * 1024 * 1024).toString());
+
+          // Call the Server Action with FormData
+          certificateUrl = await uploadFileToGCSAction(uploadFormData);
+          console.log("License document uploaded via Server Action:", certificateUrl);
+        } catch (uploadError) {
+          throw new Error(`License document upload failed: ${uploadError instanceof Error ? uploadError.message : uploadError}`);
+        }
+      }
+
+      // --- 3. Prepare Shop Data (using imported interface) ---
+      const shopData: ShopItemForRequest = {
+        name: formData.shopName,
+        tel: formData.phoneNumber,
+        shopType: formData.shopType,
+        address: formData.address,
+        postalcode: formData.postalcode,
+        region: formData.region,
+        province: formData.province,
+        district: formData.district,
+        desc: formData.description,
+        openTime: formData.openTime,
+        closeTime: formData.closeTime,
+        services: formData.services.map(({ id, ...rest }) => rest),
+        picture: pictureUrls, // Use 'picture' field with array of URLs
+        certificate: certificateUrl, // Use 'certificate' field (optional)
+        // Add other fields from your ShopItemForRequest interface if needed
+      };
+
+      const User: User = {
+        _id: session.user._id,
+        name: session.user.name,
+      };
+
+      // --- 4. Prepare Request Data (using imported interface) ---
+      const requestData: RequestItemToCreateShop = {
+        shop: shopData,
+        user: User,
+        requestType: 'create',
+        // status, _id, createdAt,Reason edited will be set by backend
+      };
+
+      // --- 5. Call createShopRequest API ---
+      console.log('Submitting shop creation request:', requestData);
+      const result = await createShopRequest(session.user.token, requestData);
 
       if (result.success) {
-        console.log('Shop creation successful:', result);
-        // Redirect to the shop page or a success page
-        router.push(`/shops/${result.shopId || ''}?status=created`); // ตัวอย่างการ Redirect
+        console.log('Shop creation request successful:', result);
+        router.push('/request?status=request_submitted');
       } else {
-        throw new Error(result.message || 'Failed to create shop.');
+        throw new Error(result.message || 'Failed to submit shop creation request.');
       }
     } catch (err) {
       console.error('Submission failed:', err);
-      setError(err instanceof Error ? err.message : 'An unknown error occurred.');
+      // More specific error handling for Promise.all failures
+      if (err instanceof AggregateError) {
+           setError(`One or more file uploads failed: ${err.errors.map(e => e instanceof Error ? e.message : String(e)).join(', ')}`);
+      } else {
+           setError(err instanceof Error ? err.message : 'An unknown error occurred.');
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
   // --- JSX ---
+  if (!session || session.user.role !== 'shopOwner') {
+      // Consider showing a loading state while session is undefined
+      return (
+          <div className="text-center my-10">
+              <p className="text-red-500 text-lg">Access Denied. You must be a Shop Owner to access this page.</p>
+          </div>
+      );
+  }
+
+  // Function to display selected file names for multiple files
+  const displaySelectedFileNames = (files: File[]): string => {
+      if (files.length === 0) return '';
+      if (files.length === 1) return files[0].name;
+      return `${files.length} files selected`;
+  }
+
   return (
     <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md max-w-4xl mx-auto my-8">
       <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-        Create Shop Form
+        Create Shop Request Form
       </h2>
 
-      {/* Display General Error Message */}
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
           <strong className="font-bold">Error: </strong>
@@ -171,9 +259,9 @@ const CreateShopForm: React.FC = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6" noValidate> {/* noValidate เพื่อให้ browser validation ไม่ทำงานก่อน custom logic */}
+      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
 
-        {/* Section: Shop Detail */}
+        {/* Section: Shop Detail (No changes needed here unless interface dictates) */}
         <div className="border p-4 rounded-md">
           <h3 className="text-lg font-semibold mb-4 text-gray-800">Shop Detail</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -195,7 +283,7 @@ const CreateShopForm: React.FC = () => {
                 Phone number <span className="text-red-500">*</span>
               </label>
               <input
-                type="tel" id="phoneNumber" name="phoneNumber" // ใช้ type="tel"
+                type="tel" id="phoneNumber" name="phoneNumber"
                 placeholder="Phone number" required
                 value={formData.phoneNumber} onChange={handleInputChange}
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -209,7 +297,7 @@ const CreateShopForm: React.FC = () => {
               <select
                 id="shopType" name="shopType" required
                 value={formData.shopType} onChange={handleInputChange}
-                className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-white" // Added bg-white for consistency
+                className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-white"
               >
                 <option value="" disabled>-- Select Type --</option>
                 <option value="Thai Massage">Thai Massage</option>
@@ -223,7 +311,7 @@ const CreateShopForm: React.FC = () => {
           </div>
         </div>
 
-        {/* Section: Location and Description */}
+        {/* Section: Location and Description (No changes needed here unless interface dictates) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Location Group */}
             <div className="border p-4 rounded-md h-full flex flex-col">
@@ -259,13 +347,15 @@ const CreateShopForm: React.FC = () => {
 
             {/* Description Group */}
             <div className="border p-4 rounded-md flex flex-col">
-                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Description</h3>
+                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Description & Reason</h3>
+                 {/* Description */}
+                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">Shop Description</label>
                  <textarea
                     id="description" name="description"
                     placeholder="Shop description (optional)"
-                    rows={10}
+                    rows={12}
                     value={formData.description} onChange={handleInputChange}
-                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline resize-none flex-grow" // Added flex-grow
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline resize-none mb-4"
                  ></textarea>
             </div>
          </div>
@@ -274,40 +364,54 @@ const CreateShopForm: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Open-Close time */}
             <div className="border p-4 rounded-md">
-                <h3 className="text-lg font-semibold mb-4 text-gray-800">Open-Close time</h3>
-                {/* TODO: Replace with a proper time range picker component */}
-                <input
-                   type="text"
-                   id="openCloseTime" name="openCloseTime"
-                   placeholder="e.g., 10:00 - 20:00"
-                   value={formData.openCloseTime} onChange={handleInputChange}
-                   className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                />
+                <h3 className="text-lg font-semibold mb-4 text-gray-800">Operating Hours</h3>
+                 {/* Open Time */}
+                 <div className="mb-3">
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="openTime">Open Time <span className="text-red-500">*</span></label>
+                    <input
+                       type="time" id="openTime" name="openTime" required
+                       value={formData.openTime} onChange={handleInputChange}
+                       className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    />
+                 </div>
+                 {/* Close Time */}
+                 <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="closeTime">Close Time <span className="text-red-500">*</span></label>
+                    <input
+                       type="time" id="closeTime" name="closeTime" required
+                       value={formData.closeTime} onChange={handleInputChange}
+                       className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    />
+                 </div>
             </div>
 
-            {/* Your Shop image */}
+            {/* Your Shop image (Multiple) */}
              <div className="border p-4 rounded-md">
-                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Shop image:</h3>
+                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Shop Images:</h3>
                  <FileUploadInput
-                    id="shopImage"
-                    name="shopImage" // ชื่อนี้จะถูกใช้ใน formData.get('shopImageFile') ใน state
-                    label="Shop Image"
+                    id="shopImageFiles" // Match state key
+                    name="shopImageFiles" // Match state key
+                    label="Shop Images (Optional)"
                     accept="image/jpeg, image/png, image/gif"
                     onChange={handleFileChange}
-                    fileName={formData.shopImageFile?.name} // ส่งชื่อไฟล์ไปแสดง
+                    fileName={displaySelectedFileNames(formData.shopImageFiles)} // Display multiple file info
+                    multiple={true} // Allow multiple file selection
+                    required={true}
                  />
              </div>
 
-             {/* ใบรับรอง */}
+             {/* ใบรับรอง (Single) */}
              <div className="border p-4 rounded-md">
-                 <h3 className="text-lg font-semibold mb-4 text-gray-800">ใบรับรอง:</h3>
+                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Certificate:</h3>
                  <FileUploadInput
-                    id="licenseDoc"
-                    name="licenseDoc" // ชื่อนี้จะถูกใช้ใน formData.get('licenseDocFile') ใน state
-                    label="Certificate"
+                    id="licenseDocFile"
+                    name="licenseDocFile"
+                    label="Certificate (Optional)"
                     accept=".pdf, image/jpeg, image/png"
                     onChange={handleFileChange}
-                    fileName={formData.licenseDocFile?.name} // ส่งชื่อไฟล์ไปแสดง
+                    fileName={formData.licenseDocFile?.name}
+                    required={true}
+                    // multiple={false} // Default is false, explicitly set if needed
                  />
              </div>
         </div>
@@ -315,9 +419,7 @@ const CreateShopForm: React.FC = () => {
         {/* Section: Services offered */}
         <div className="border p-4 rounded-md">
             <h3 className="text-lg font-semibold mb-4 text-gray-800">Services offered:</h3>
-            {/* ใช้ Component ServiceInput */}
             <ServiceForm onAddService={handleAddService} />
-            {/* ใช้ Component ServiceList */}
             <ServiceList services={formData.services} onDeleteService={handleDeleteService} />
         </div>
 
@@ -325,12 +427,12 @@ const CreateShopForm: React.FC = () => {
         <div className="text-center pt-4">
           <button
             type="submit"
-            disabled={isSubmitting} // Disable button while submitting
+            disabled={isSubmitting}
             className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded focus:outline-none focus:shadow-outline ${
               isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
-            {isSubmitting ? 'Creating...' : 'Create Shop'}
+            {isSubmitting ? 'Submitting Request...' : 'Submit Shop Request'}
           </button>
         </div>
 
@@ -339,4 +441,4 @@ const CreateShopForm: React.FC = () => {
   );
 };
 
-export default CreateShopForm; // เปลี่ยนชื่อ Export ด้วย
+export default CreateShopRequestForm;
