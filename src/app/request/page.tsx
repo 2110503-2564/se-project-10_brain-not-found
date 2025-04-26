@@ -26,7 +26,8 @@ export default async function MyRequestPage({
       {/* ส่งข้อมูล requests ไปยัง Request component */}
       <Request
         requests={requests}
-        isShopOwner={session.user.role === "shopOwner"}
+        role={session.user.role}   // <-- ส่ง role จาก session
+        token={session.user.token} // <-- ส่ง token จาก session
       />
     </main>
   );
