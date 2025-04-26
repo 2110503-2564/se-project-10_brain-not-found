@@ -49,7 +49,7 @@ export default function ShopOwnerRequestMenu({ requestId }: ShopOwnerRequestMenu
   
       console.log("Trying to delete request ID:", requestId);
   
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/requests/${requestId}`, {  // <-- correct
+      const res = await fetch(`${process.env.BACKEND_URL}/api/v1/requests/${requestId}`, {  // <-- correct
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
