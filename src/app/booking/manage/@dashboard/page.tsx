@@ -1,7 +1,7 @@
 // src/app/booking/manage/@dashboard/page.tsx
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
-import AddShopForm from '@/components/addShopForm';
+import CreateShopRequestForm from '@/components/addShopFormFull';
 import UserProfile from '@/components/UserProfile';
 
 export default async function DashboardPage() {
@@ -11,7 +11,7 @@ export default async function DashboardPage() {
   return (
     <main className="bg-slate-500 m-5 p-5 rounded-lg">
       <UserProfile />
-      {session.user.role === 'admin' && <AddShopForm />}
+      {session.user.role === 'admin' && <CreateShopRequestForm />}
     </main>
   );
 }
