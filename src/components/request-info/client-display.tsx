@@ -45,6 +45,7 @@ export function RequestInfoClientDisplay({
     const closeModal = () => {
         setIsModalOpen(false);
         setModalImageUrl(null);
+        setIndex(0);
     };
 
     const handleImageChange = (e : React.MouseEvent) => {
