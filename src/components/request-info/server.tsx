@@ -115,7 +115,7 @@ export async function RequestInfo({ id }: { id: string }) {
             <RequestInfoStatus request={request}/>
         </div>
         <div className="order-6 justify-self-center w-[50%]">
-            <RequestInfoButtonGroup session={session} status={request.status}/>
+            <RequestInfoButtonGroup session={session} status={request.status} requestId={request._id}/>
         </div> 
       </div>
     </>

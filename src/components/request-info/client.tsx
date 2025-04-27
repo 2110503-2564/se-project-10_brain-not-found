@@ -1,5 +1,7 @@
 "use client";
 
+import approveRequest from "@/libs/approveRequest";
+import rejectRequest from "@/libs/rejectRequest";
 import { ExpandLess, ExpandMore } from "@mui/icons-material";
 import {
   Badge,
@@ -9,11 +11,19 @@ import {
   CardContent,
   CardHeader,
   Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Divider,
   Popover,
+  TextField,
   Typography,
 } from "@mui/material";
 import { Session } from "next-auth";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import React from "react";
 import { useState } from "react";
 
@@ -126,7 +136,7 @@ export function RequestInfoStatus({ request }: { request: RequestData }) {
   } else return <Typography variant="h6">Error: Unknown Status</Typography>;
 }
 
-export function RequestInfoButtonGroup({session, status} : {session: Session, status: string}) {
+export function RequestInfoButtonGroup({session, status, requestId} : {session: Session, status: string, requestId: string}) {
     const { role } = session.user;
 
     // A little unsure about the role handling logic
@@ -144,8 +154,8 @@ export function RequestInfoButtonGroup({session, status} : {session: Session, st
     } else if (role === 'admin') {
         return (
             <div className="flex justify-evenly w-full">
-                <ApproveButton status={status}/>
-                <RejectButton status={status}/>
+                <ApproveButton status={status} requestId={requestId}/>
+                <RejectButton status={status} requestId={requestId}/>
             </div>
         )
     }
@@ -177,28 +187,148 @@ function DeleteButton() {
     )
 }
 
-function ApproveButton({status} : {status: string}) {
+function ApproveButton({status, requestId} : {status: string, requestId: string}) {
+
+    const [openApproveDialog, setOpenApproveDialog] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState(false);
+  
+    const { data: session } = useSession(); // <--- useSession here
+    const router = useRouter(); // for refresh page
 
     const handleClick = () => {
-        return null;
+        setOpenApproveDialog(true)
     }
 
+    const handleConfirmApprove = async () => {
+        const token = session?.user?.token;
+        if (!token) {
+          console.error("No token found. Cannot approve.");
+          alert("Authentication error. Please log in again.");
+          return;
+        }
+    
+        setIsSubmitting(true); // เริ่ม Loading
+        try {
+          await approveRequest({ requestId, token });
+          router.refresh();
+    
+        } catch (error) {
+          console.error("Approve failed:", error);
+    
+        } finally {
+          setIsSubmitting(false); // สิ้นสุด Loading
+          setOpenApproveDialog(false);
+        }
+      }
+
     return (
-        <Button color="success" variant="contained" disabled={status !== 'pending'} onClick={handleClick}>
-            Approve
-        </Button>
+        <>
+            <Button color="success" variant="contained" disabled={status !== 'pending' || isSubmitting} onClick={handleClick}>
+                Approve
+            </Button>
+            
+            {/* Approve Dialog */}
+            <Dialog disableScrollLock open={openApproveDialog} onClose={() => setOpenApproveDialog(false)}
+            PaperProps={{
+                className: 'w-full max-w-lg rounded-lg'
+            }}
+            >
+                <DialogTitle>Approve Request</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>Are you sure you want to approve this request?</DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={(e) => {e.stopPropagation();setOpenApproveDialog(false)}} disabled={isSubmitting}>Cancel</Button>
+                    <Button color="success" onClick={(e)=>{e.stopPropagation();handleConfirmApprove()}} disabled={isSubmitting}>
+                    {isSubmitting ? 'Approving...' : 'Approve'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </>
     )
 }
 
-function RejectButton({status} : {status: string}) {
+function RejectButton({status, requestId} : {status: string, requestId: string}) {
+
+    const [openRejectDialog, setOpenRejectDialog] = useState(false)
+    const [rejectReason, setRejectReason] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const { data: session } = useSession(); // <--- useSession here
+    const router = useRouter(); // for refresh page
 
     const handleClick = () => {
-        return null;
+        setRejectReason('');
+        setOpenRejectDialog(true)
+    }
+
+    const handleCloseRejectDialog = () => {
+        setOpenRejectDialog(false);
+        setRejectReason(''); // เคลียร์ reason เมื่อปิด
+    }
+
+    const handleConfirmReject = async () => {
+        const token = session?.user?.token;
+        if (!token) {
+          console.error("No token found. Cannot reject.");
+          alert("Authentication error. Please log in again.");
+          return;
+        }
+        if (!rejectReason.trim()) {
+            alert("Please provide a reason for rejection.");
+            return;
+        }
+    
+        setIsSubmitting(true); // เริ่ม Loading
+        try {
+          await rejectRequest({ requestId, reason: rejectReason, token });
+          router.refresh()
+    
+        } catch (error) {
+          console.error("Reject failed:", error);
+    
+        } finally {
+          setIsSubmitting(false); // สิ้นสุด Loading
+          handleCloseRejectDialog();
+        }
     }
 
     return (
-        <Button color="error" variant="contained" disabled={status !== 'pending'} onClick={handleClick}>
-            Reject
-        </Button>
+        <>
+            <Button color="error" variant="contained" disabled={status !== 'pending' || isSubmitting} onClick={handleClick}>
+                Reject
+            </Button>
+
+            {/* Reject Dialog */}
+            <Dialog disableScrollLock open={openRejectDialog} onClose={handleCloseRejectDialog}
+            PaperProps={{
+                className: 'w-full max-w-lg rounded-lg'
+            }}
+            >
+            <DialogTitle>Reject Request</DialogTitle>
+            <DialogContent onClick={(e: React.MouseEvent) => {e.stopPropagation();}}>
+                <TextField
+                disabled={isSubmitting} 
+                autoFocus
+                margin="dense"
+                id="rejectReason"
+                label="Reason for Rejection"
+                type="text"
+                fullWidth
+                variant="outlined"
+                multiline
+                rows={3}
+                value={rejectReason} // ผูกค่ากับ State
+                onChange={(e) => setRejectReason(e.target.value)} // อัปเดต State
+                />
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={(e)=>{e.stopPropagation();handleCloseRejectDialog();}} disabled={isSubmitting}>Cancel</Button>
+                <Button color="error" onClick={(e)=>{e.stopPropagation();handleConfirmReject();}} disabled={isSubmitting}>
+                {isSubmitting ? 'Rejecting...' : 'Reject'}
+                </Button>
+            </DialogActions>
+            </Dialog>
+        </>
     )
 }
