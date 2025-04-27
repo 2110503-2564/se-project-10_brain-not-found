@@ -40,6 +40,7 @@ export default function RequestClient({ requests, role, token }: RequestClientPr
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [modalInitialReason, setModalInitialReason] = useState<string>(""); // For modal editing (from HEAD)
+  const [selectedStatus, setSelectedStatus] = useState<string>(""); // <--- เพิ่ม state สำหรับ status
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams(); // Use hook to get search params
@@ -54,17 +55,21 @@ export default function RequestClient({ requests, role, token }: RequestClientPr
   // --- Event Handlers (Combined) ---
 
   // Use the more detailed handleOpenModal from HEAD
-  const handleOpenModal = (requestId: string, reason: string | null | undefined) => {
+  // แก้ไขฟังก์ชัน handleOpenModal ให้รับ status และ set state
+  const handleOpenModal = (requestId: string, reason: string, status: string) => { // <--- เพิ่ม status parameter
     setSelectedRequestId(requestId);
-    setModalInitialReason(reason || ""); // Set initial reason (empty string if null/undefined)
+    setModalInitialReason(reason || ""); // ใช้ || "" เพื่อให้เป็น string เสมอ
+    setSelectedStatus(status); // <--- เซ็ต status ที่เลือก
     setIsModalOpen(true);
   };
+
 
   // handleCloseModal from HEAD
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedRequestId(null);
     setModalInitialReason(""); // Reset reason on close
+    setSelectedStatus(""); // Reset status on close
   };
 
   // handleSaveReason from HEAD
@@ -74,12 +79,12 @@ export default function RequestClient({ requests, role, token }: RequestClientPr
       alert("Could not save reason: Missing information.");
       return;
     }
-  
+
     console.log("Attempting to save reason:");
     console.log("Request ID:", selectedRequestId);
     console.log("Token:", token ? 'Token present' : 'Token MISSING!'); // Check if token exists
     console.log("New Reason:", newReason);
-  
+
     try {
       await editReason(selectedRequestId, token, newReason);
       alert("Reason saved successfully!");
@@ -90,7 +95,7 @@ export default function RequestClient({ requests, role, token }: RequestClientPr
       alert(`Failed to save reason: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   };
-  
+
 
   // handleFilterChange from 7668f81...
   const handleFilterChange = (newFilter: string) => {
@@ -173,9 +178,9 @@ export default function RequestClient({ requests, role, token }: RequestClientPr
                 {/* Reason Icon and Actions Dropdown (Layout from HEAD) */}
                 <div className="flex justify-center items-center gap-2">
                   {/* Show icon only if reason exists */}
-                  {request.reason&& request.status !== 'approved' ? (
+                  {request.reason && request.status !== 'approved' ? (
                     <ExclamationTriangleIcon
-                      className={`h-5 w-5 cursor-pointer 
+                      className={`h-5 w-5 cursor-pointer
                         ${
                           request.status === 'pending' ? 'text-neutral-500 hover:text-neutral-700' :
                            'text-red-600 hover:text-red-800'
@@ -184,8 +189,9 @@ export default function RequestClient({ requests, role, token }: RequestClientPr
                       title="View/Edit Reason" // Accessibility title
                       onClick={(e) => {
                         e.stopPropagation(); // Prevent triggering parent li click
-                        handleOpenModal(request._id, request.reason)
-                      }} // Use updated handler
+                        // แก้ไขตอนเรียก handleOpenModal ให้ส่ง request.status ไปด้วย
+                        handleOpenModal(request._id, request.reason || "", request.status); // <--- ส่ง request.status
+                      }}
                     />
                   ) : (
                     // Placeholder for alignment if no reason
@@ -206,6 +212,7 @@ export default function RequestClient({ requests, role, token }: RequestClientPr
       )}
 
       {/* Modal Rendering (from HEAD) */}
+      {/* แก้ไขตอน Render ReasonModal ให้ส่ง status prop ไป */}
       {isModalOpen && selectedRequestId && (
         <ReasonModal
           isOpen={isModalOpen}
@@ -213,6 +220,7 @@ export default function RequestClient({ requests, role, token }: RequestClientPr
           role={role}
           initialReason={modalInitialReason} // Pass initial reason
           onSave={handleSaveReason} // Pass save handler
+          status={selectedStatus} // <--- ส่ง status ไปเป็น prop
         />
       )}
     </div>
