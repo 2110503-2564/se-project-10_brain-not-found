@@ -23,8 +23,7 @@ interface FileInputProps {
   multiple?: boolean; // Prop สำหรับเปิด/ปิดการเลือกหลายไฟล์
 
   existingFiles?: string[]; // รายการไฟล์เดิม
-  // --- (Optional) Prop สำหรับ Preview รูปใหม่ ---
-  newFileObjects?: File[];
+  onDeletedUrlsChange?: (deletedUrls: string[]) => void;
 }
 
 const ManageFileUpload: React.FC<FileInputProps> = ({
@@ -37,13 +36,12 @@ const ManageFileUpload: React.FC<FileInputProps> = ({
   required = false,
   multiple = false, // ค่า default เป็น false
   existingFiles = [],
-  newFileObjects = [],
+  onDeletedUrlsChange= [],
 }) => {
 
     // console.log(existingFiles);
 
     const [deletedImageURLs, setDeletedImageURLs] = useState<string[]>([]);
-    const [existImageURLs, setExistImageURLs] = useState<string[]>(existingFiles); 
 
   return (
     <div>
@@ -53,11 +51,11 @@ const ManageFileUpload: React.FC<FileInputProps> = ({
       
 
 {/* --- ส่วนแสดงไฟล์เดิม --- */}
-{existImageURLs.length > 0 && (
+{existingFiles.length > 0 && (
         <div className="mb-4 border border-dashed border-gray-300 p-3 rounded-md">
           <p className="text-sm font-medium text-gray-6 00 mb-2">Current Files:</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {existImageURLs.filter(file => !deletedImageURLs.includes(file)).map((file) => (
+            {existingFiles.filter(file => !deletedImageURLs.includes(file)).map((file) => (
               <div key={file} className="relative group border p-1 rounded shadow-sm">
                 
                 <img
@@ -70,16 +68,15 @@ const ManageFileUpload: React.FC<FileInputProps> = ({
                   <button
                     type="button"
                     onClick={(e) => {
-                        e.preventDefault(); 
+                        e.preventDefault();
                         setDeletedImageURLs((prev) => {
                           const updated = deletedImageURLs.includes(file) ? deletedImageURLs : [...prev, file];
-                          console.log('--- Updated deletedImageURLs ---');
-                          updated.forEach((url, index) => {
-                            console.log(`${url}`);
-                          });
+                          if (onDeletedUrlsChange) {
+                            onDeletedUrlsChange(updated); // <--- เรียกตรงนี้
+                          }
                           return updated;
                         });
-                      }}
+                    }}
                     className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity"
                     aria-label={`Delete ${file}`}
                   >
@@ -88,8 +85,7 @@ const ManageFileUpload: React.FC<FileInputProps> = ({
                       <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
                   </button>
-                 <p className="text-xs text-gray-500 mt-1 truncate w-20" title={file}>{file}</p>
-              </div>
+                </div>
             ))}
           </div>
         </div>
@@ -111,8 +107,14 @@ const ManageFileUpload: React.FC<FileInputProps> = ({
           <button
             type="button"
             onClick={(e) => {
-              e.preventDefault();
-              setDeletedImageURLs((prev) => prev.filter((url) => url !== file));
+                e.preventDefault();
+                setDeletedImageURLs((prev) => {
+                  const updated = prev.filter((url) => url !== file);
+                  if (onDeletedUrlsChange) {
+                    onDeletedUrlsChange(updated); // <--- เรียกตรงนี้ด้วย
+                  }
+                  return updated;
+                });
             }}
             className="absolute top-0 right-0 bg-blue-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity"
             aria-label={`Restore ${file}`}
@@ -122,7 +124,6 @@ const ManageFileUpload: React.FC<FileInputProps> = ({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <p className="text-xs text-gray-500 mt-1 truncate w-20" title={file}>{file}</p>
         </div>
       ))}
     </div>

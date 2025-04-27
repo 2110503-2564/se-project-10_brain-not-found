@@ -95,31 +95,35 @@ export async function uploadFileToGCSAction(
     }
 }
 
-// export async function deleteFileFromGCS(filePath: string): Promise<void> {
-//     if (!bucketName) {
-//         console.error("GCS_BUCKET_NAME environment variable is not set.");
-//         throw new Error('GCS Bucket Name not configured for deletion.');
-//     }
-//     if (!filePath || typeof filePath !== 'string' || filePath.trim() === '') {
-//         console.warn("Attempted to delete an empty or invalid file path.");
-//         // อาจจะ return หรือ throw error ขึ้นกับว่าต้องการ strict แค่ไหน
-//         return; // ไม่ทำอะไรถ้า path ไม่ถูกต้อง
-//     }
+export async function deleteFileFromGCS(filePath: string): Promise<void> {
+    
+    const storage = new Storage();
+    const bucketName = process.env.GCS_BUCKET_NAME;
 
-//     try {
-//         const file = storage.bucket(bucketName).file(filePath);
-//         console.log(`Attempting to delete GCS object: gs://${bucketName}/${filePath}`);
-//         await file.delete();
-//         console.log(`Successfully deleted GCS object: gs://${bucketName}/${filePath}`);
-//     } catch (error: any) {
-//         // Google Cloud Storage อาจจะ throw error ถ้าไฟล์ไม่มีอยู่แล้ว
-//         // เราอาจจะไม่ถือว่าเป็น Error ร้ายแรงเสมอไป
-//         if (error.code === 404) {
-//             console.warn(`File not found during deletion attempt (maybe already deleted?): gs://${bucketName}/${filePath}`);
-//             // ไม่ throw error ต่อ ปล่อยผ่าน
-//         } else {
-//             console.error(`Error deleting file gs://${bucketName}/${filePath} from GCS:`, error);
-//             throw new Error(`Failed to delete file from GCS: ${error.message}`);
-//         }
-//     }
-// }
+    if (!bucketName) {
+        console.error("GCS_BUCKET_NAME environment variable is not set.");
+        throw new Error('GCS Bucket Name not configured for deletion.');
+    }
+    if (!filePath || typeof filePath !== 'string' || filePath.trim() === '') {
+        console.warn("Attempted to delete an empty or invalid file path.");
+        // อาจจะ return หรือ throw error ขึ้นกับว่าต้องการ strict แค่ไหน
+        return; // ไม่ทำอะไรถ้า path ไม่ถูกต้อง
+    }
+
+    try {
+        const file = storage.bucket(bucketName).file(filePath);
+        console.log(`Attempting to delete GCS object: gs://${bucketName}/${filePath}`);
+        await file.delete();
+        console.log(`Successfully deleted GCS object: gs://${bucketName}/${filePath}`);
+    } catch (error: any) {
+        // Google Cloud Storage อาจจะ throw error ถ้าไฟล์ไม่มีอยู่แล้ว
+        // เราอาจจะไม่ถือว่าเป็น Error ร้ายแรงเสมอไป
+        if (error.code === 404) {
+            console.warn(`File not found during deletion attempt (maybe already deleted?): gs://${bucketName}/${filePath}`);
+            // ไม่ throw error ต่อ ปล่อยผ่าน
+        } else {
+            console.error(`Error deleting file gs://${bucketName}/${filePath} from GCS:`, error);
+            throw new Error(`Failed to delete file from GCS: ${error.message}`);
+        }
+    }
+}

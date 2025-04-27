@@ -11,7 +11,7 @@ import ServiceForm from './ServiceForm';
 
 // --- Import API functions ---
 import editShopRequest from '@/libs/editShopRequest';
-import { uploadFileToGCSAction } from '@/libs/gcsUpload'; // Adjust path if needed
+import { uploadFileToGCSAction, deleteFileFromGCS } from '@/libs/gcsUpload'; // Adjust path if needed
 import getRequest from '@/libs/getRequest';
 import Image from 'next/image';
 
@@ -33,6 +33,14 @@ interface ShopFormData {
     oldCertImageURL: String[];
     licenseDocFile: File | null; // Keep as single file for now, adjust if needed
 }
+
+const extractGCSFilePath = (fullUrl: string) => {
+    const baseUrl = "https://storage.googleapis.com/brain_not_found_app/";
+    if (fullUrl.startsWith(baseUrl)) {
+      return fullUrl.substring(baseUrl.length);
+    }
+    return fullUrl; // fallback (เผื่อมันเป็น path อยู่แล้ว)
+  };
 
 interface EditShopFormProps {
     requestId: string;
@@ -62,6 +70,9 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deletedImageURLs, setDeletedImageURLs] = useState<string[]>([]);
+  const [deletedCertImageURLs, setDeletedCertImageURLs] = useState<string[]>([]);
+
 
   // Redirect if not logged in or not a shopOwner
   useEffect(() => {
@@ -176,6 +187,20 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
     let certificateUrl: string | undefined = undefined; // Single URL for license/certificate
 
     try {
+      // --- 0. Delete Shop Images (Multiple) ---
+      const allDeletedUrls = [...deletedImageURLs, ...deletedCertImageURLs];
+      if (allDeletedUrls.length > 0) {
+        console.log("Deleting old images:", allDeletedUrls);
+        await Promise.all(allDeletedUrls.map(async (url) => {
+          const filePath = extractGCSFilePath(url); // <<< เพิ่มตรงนี้
+          await deleteFileFromGCS(filePath);
+        }));
+        console.log("All deleted successfully.");
+    }
+
+
+
+
       // --- 1. Upload Shop Images (Multiple) ---
       if (formData.shopImageFiles.length > 0) {
         console.log(`Uploading ${formData.shopImageFiles.length} shop image(s)...`);
@@ -433,18 +458,17 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
              <div className="border p-4 rounded-md">
                  <h3 className="text-lg font-semibold mb-4 text-gray-800">Shop Images:</h3>
                  <ManageFileUpload
-                    id="shopImageFiles" // Match state key
-                    name="shopImageFiles" // Match state key
+                    id="shopImageFiles"
+                    name="shopImageFiles"
                     label="Shop Images (Optional)"
                     accept="image/jpeg, image/png, image/gif"
                     onChange={handleFileChange}
-                    fileName={displaySelectedFileNames(formData.shopImageFiles)} // Display multiple file info
+                    fileName={displaySelectedFileNames(formData.shopImageFiles)}
                     existingFiles={formData.oldshopImageURL as string[]}
-                    // onDeleteExisting={(fileToDelete: File) => {}}
-                    // newFileObjects={null}
-                    multiple={true} // Allow multiple file selection
+                    multiple={true}
                     required={true}
-                 />
+                    onDeletedUrlsChange={setDeletedImageURLs}
+                    />
              </div>
 
              {/* ใบรับรอง (Single) */}
@@ -459,8 +483,8 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
                     fileName={formData.licenseDocFile?.name}
                     existingFiles={formData.oldCertImageURL as string[]}
                     required={true}
-                    // multiple={false} // Default is false, explicitly set if needed
-                 />
+                    onDeletedUrlsChange={setDeletedCertImageURLs}
+                    />
              </div>
 
         {/* Section: Services offered */}
