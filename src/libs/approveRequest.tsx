@@ -1,7 +1,7 @@
 export default async function approveRequest ({ requestId,token }:{ requestId:string, token:string }) {
     try {
       const response = await fetch(`${process.env.BACKEND_URL}/api/v1/requests/${requestId}/approve`, {
-        method: 'POST',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`

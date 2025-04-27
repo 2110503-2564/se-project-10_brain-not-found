@@ -1,7 +1,7 @@
 export default async function rejectRequest ({ requestId, reason, token }:{ requestId:string, reason:string, token:string }) {
     try {
       const response = await fetch(`${process.env.BACKEND_URL}/api/v1/requests/${requestId}/reject`, {
-        method: 'POST',
+        method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
