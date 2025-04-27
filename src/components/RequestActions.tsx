@@ -24,7 +24,7 @@ export default function RequestActions({ requestId, isShopOwner, role, status }:
   return (
     <>
       {role === "admin" ? (
-        <AdminRequestMenu onApprove={() => {}} onReject={() => {}} />
+        <AdminRequestMenu requestId={requestId} />
       ) : role === "shopOwner" ? (
         //TODO: implement shopOwner menu component instead 'null'
         <ShopOwnerRequestMenu requestId={requestId} />

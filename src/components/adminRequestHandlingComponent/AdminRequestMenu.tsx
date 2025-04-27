@@ -8,19 +8,25 @@ import {
 } from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import approveRequest from "@/libs/approveRequest";
+import rejectRequest from "@/libs/rejectRequest";
 
 interface RequestMenuProps {
-  onApprove: () => void;
-  onReject: (reason: string) => void;
+  requestId: string;
 }
 
-export default function AdminRequestMenu({ onApprove, onReject }: RequestMenuProps) {
+export default function AdminRequestMenu({ requestId }: RequestMenuProps) {
   // Props ไปเรียกฟังก์ชันใน parent component (ใน RequestAction)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [openApproveDialog, setOpenApproveDialog] = useState(false)
   const [openRejectDialog, setOpenRejectDialog] = useState(false)
   const [rejectReason, setRejectReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: session } = useSession(); // <--- useSession here
+  const router = useRouter(); // for refresh page
 
   const handleClickMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget)
@@ -47,25 +53,47 @@ export default function AdminRequestMenu({ onApprove, onReject }: RequestMenuPro
   }
 
   const handleConfirmApprove = async () => {
+    const token = session?.user?.token;
+    if (!token) {
+      console.error("No token found. Cannot approve.");
+      alert("Authentication error. Please log in again.");
+      return;
+    }
+
     setIsSubmitting(true); // เริ่ม Loading
     try {
-      await onApprove(); // สมมติว่า onApprove อาจเป็น async
+      await approveRequest({ requestId, token });
+      router.refresh();
+
     } catch (error) {
       console.error("Approve failed:", error);
-      // ควรมีการจัดการ Error ที่ดีกว่านี้ (อาจจะทำใน Component แม่)
+
     } finally {
       setIsSubmitting(false); // สิ้นสุด Loading
       setOpenApproveDialog(false);
     }
   }
 
-  const handleConfirmReject = async () => {  
+  const handleConfirmReject = async () => {
+    const token = session?.user?.token;
+    if (!token) {
+      console.error("No token found. Cannot reject.");
+      alert("Authentication error. Please log in again.");
+      return;
+    }
+    if (!rejectReason.trim()) {
+        alert("Please provide a reason for rejection.");
+        return;
+    }
+
     setIsSubmitting(true); // เริ่ม Loading
     try {
-      await onReject(rejectReason); // สมมติว่า onReject อาจเป็น async
+      await rejectRequest({ requestId, reason: rejectReason, token });
+      router.refresh()
+
     } catch (error) {
       console.error("Reject failed:", error);
-       // ควรมีการจัดการ Error ที่ดีกว่านี้
+
     } finally {
       setIsSubmitting(false); // สิ้นสุด Loading
       handleCloseRejectDialog();

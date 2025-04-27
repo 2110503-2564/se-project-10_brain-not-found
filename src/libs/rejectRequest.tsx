@@ -1,6 +1,6 @@
-export default async function approveRequest ({ requestId, reason, token }:{ requestId:string, reason:string, token:string }) {
+export default async function rejectRequest ({ requestId, reason, token }:{ requestId:string, reason:string, token:string }) {
     try {
-      const response = await fetch(`${process.env.BACKEND_URL}/api/v1/requests/${requestId}/approve`, {
+      const response = await fetch(`${process.env.BACKEND_URL}/api/v1/requests/${requestId}/reject`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
