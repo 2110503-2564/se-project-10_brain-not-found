@@ -4,9 +4,12 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 
-const getGcsPublicUrl = (path: string) => {
+
+
+
+const getGcsAuthenticatedUrl = (path: string) => {
     const bucket = process.env.NEXT_PUBLIC_GCS_BUCKET_NAME || 'brain_not_found_app';
-    return `https://storage.googleapis.com/${bucket}/${path}`;
+    return `https://storage.cloud.google.com/${bucket}/${path}`;
 }
 
 interface FileInputProps {
@@ -39,7 +42,8 @@ const ManageFileUpload: React.FC<FileInputProps> = ({
 
     // console.log(existingFiles);
 
-    const [deleteImageURLs, setDeleteImageURLs] = useState<string[]>([]); 
+    const [deleteImageURLs, setDeleteImageURLs] = useState<string[]>([]);
+    const [existImageURLs, setExistImageURLs] = useState<string[]>(existingFiles); 
 
   return (
     <div>
@@ -49,15 +53,15 @@ const ManageFileUpload: React.FC<FileInputProps> = ({
       
 
 {/* --- ส่วนแสดงไฟล์เดิม --- */}
-{existingFiles.length > 0 && (
+{existImageURLs.length > 0 && (
         <div className="mb-4 border border-dashed border-gray-300 p-3 rounded-md">
           <p className="text-sm font-medium text-gray-6 00 mb-2">Current Files:</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {existingFiles.map((file) => (
+            {existImageURLs.map((file) => (
               <div key={file} className="relative group border p-1 rounded shadow-sm">
                 
                 <img
-                  src={name!== 'licenseDocFile'?file:getGcsPublicUrl(file)} // ใช้ helper function สร้าง URL เต็ม
+                  src={name!== 'licenseDocFile'?file:getGcsAuthenticatedUrl(file)} // ใช้ helper function สร้าง URL เต็ม
                   alt={`${name} Picture`}
                   className="object-cover rounded"
                 //   onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.png'; }} // Fallback image
@@ -71,10 +75,55 @@ const ManageFileUpload: React.FC<FileInputProps> = ({
                           const updated = deleteImageURLs.includes(file) ? deleteImageURLs : [...prev, file];
                           console.log('--- Updated deleteImageURLs ---');
                           updated.forEach((url, index) => {
-                            console.log(`${index + 1}. ${url}`);
+                            console.log(`${url}`);
                           });
                           return updated;
                         });
+                        setExistImageURLs((prev) => prev.filter((url) => url !== file)); // Remove)
+                      }}
+                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity"
+                    aria-label={`Delete ${file}`}
+                  >
+                    {/* ไอคอนถังขยะ หรือ X */}
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                 <p className="text-xs text-gray-500 mt-1 truncate w-20" title={file}>{file}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* --- End ส่วนแสดงไฟล์เดิม --- */}
+
+      {existImageURLs.length > 0 && (
+        <div className="mb-4 border border-dashed border-gray-300 p-3 rounded-md">
+          <p className="text-sm font-medium text-gray-6 00 mb-2">Current Files:</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {existImageURLs.map((file) => (
+              <div key={file} className="relative group border p-1 rounded shadow-sm">
+                
+                <img
+                  src={name!== 'licenseDocFile'?file:getGcsAuthenticatedUrl(file)} // ใช้ helper function สร้าง URL เต็ม
+                  alt={`${name} Picture`}
+                  className="object-cover rounded"
+                //   onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.png'; }} // Fallback image
+                />
+                {/* ปุ่มลบ */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                        e.preventDefault(); 
+                        setDeleteImageURLs((prev) => {
+                          const updated = deleteImageURLs.includes(file) ? deleteImageURLs : [...prev, file];
+                          console.log('--- Updated deleteImageURLs ---');
+                          updated.forEach((url, index) => {
+                            console.log(`${url}`);
+                          });
+                          return updated;
+                        });
+                        setExistImageURLs((prev) => prev.filter((url) => url !== file)); // Remove)
                       }}
                     className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity"
                     aria-label={`Delete ${file}`}
@@ -112,7 +161,7 @@ const ManageFileUpload: React.FC<FileInputProps> = ({
               accept={accept}
               onChange={onChange}
               className="sr-only"
-              required={required && existingFiles.length === 0 && newFileObjects.length === 0} // Required ถ้าไม่มีไฟล์เดิมและยังไม่ได้เลือกไฟล์ใหม่
+              required={required && existImageURLs.length === 0 && newFileObjects.length === 0} // Required ถ้าไม่มีไฟล์เดิมและยังไม่ได้เลือกไฟล์ใหม่
               multiple={multiple}
             />
           </label>
