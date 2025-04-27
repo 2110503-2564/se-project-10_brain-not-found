@@ -57,13 +57,12 @@ export function RequestInfoClientDisplay({
             <div className="grid xs:grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-8">
                 {/* --- Shop Image --- */}
                 <div className="xs:order-1 md:order-2 place-self-center">
-                    <Paper elevation={5} sx={{ width: SHOP_PICTURE_SIZE.width, height: SHOP_PICTURE_SIZE.height, mb: 4, cursor: 'pointer' }} onClick={() => openModal(shopImageUrl)}>
+                    <Paper elevation={5} sx={{ width: SHOP_PICTURE_SIZE.width, height: SHOP_PICTURE_SIZE.height, mb: 4, cursor: 'pointer', position: 'relative' }} onClick={() => openModal(shopImageUrl)}>
                         <Image
-                            width={SHOP_PICTURE_SIZE.width}
-                            height={SHOP_PICTURE_SIZE.height}
-                            style={{ objectFit: 'contain', borderRadius: '4px' }} // Added borderRadius to match Paper
+                            style={{ objectFit: 'fill', borderRadius: '4px' }} // Added borderRadius to match Paper
                             src={shopImageUrl}
                             alt={`${shop.name} picture`}
+                            fill
                             priority // Prioritize loading the main shop image
                         />
                     </Paper>
@@ -124,11 +123,10 @@ export function RequestInfoClientDisplay({
                     <Stack spacing={1.5}>
                         <Head>Shop Certificate</Head>
                         {certificateSignedUrl ? (
-                            <Paper elevation={5} sx={{ width: CERT_PICTURE_SIZE.width, height: CERT_PICTURE_SIZE.height, cursor: 'pointer' }} onClick={() => openModal(certificateSignedUrl)}>
+                            <Paper elevation={5} sx={{ width: CERT_PICTURE_SIZE.width, height: CERT_PICTURE_SIZE.height, cursor: 'pointer', position: 'relative' }} onClick={() => openModal(certificateSignedUrl)}>
                                 <Image
-                                    width={CERT_PICTURE_SIZE.width}
-                                    height={CERT_PICTURE_SIZE.height}
-                                    style={{ objectFit: 'contain', borderRadius: '4px' }}
+                                    style={{ objectFit: 'fill', borderRadius: '4px' }}
+                                    fill
                                     src={certificateSignedUrl}
                                     alt="Shop Certificate"
                                 />
