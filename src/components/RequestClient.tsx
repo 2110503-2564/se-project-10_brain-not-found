@@ -74,19 +74,23 @@ export default function RequestClient({ requests, role, token }: RequestClientPr
       alert("Could not save reason: Missing information.");
       return;
     }
-
+  
+    console.log("Attempting to save reason:");
+    console.log("Request ID:", selectedRequestId);
+    console.log("Token:", token ? 'Token present' : 'Token MISSING!'); // Check if token exists
+    console.log("New Reason:", newReason);
+  
     try {
       await editReason(selectedRequestId, token, newReason);
       alert("Reason saved successfully!");
-      handleCloseModal(); // Close modal on success
-      // Revalidate data by refreshing the page with current filters
-      router.refresh(); // Next.js 13+ way to re-fetch server component data
+      handleCloseModal();
+      router.refresh();
     } catch (error) {
-      console.error("Failed to save reason:", error);
+      console.error("Failed to save reason (Raw Error):", error); // Log the raw error object
       alert(`Failed to save reason: ${error instanceof Error ? error.message : "Unknown error"}`);
-      // Keep modal open on failure
     }
   };
+  
 
   // handleFilterChange from 7668f81...
   const handleFilterChange = (newFilter: string) => {
