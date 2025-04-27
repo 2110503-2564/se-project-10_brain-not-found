@@ -147,7 +147,7 @@ export function RequestInfoButtonGroup({session, status, requestId} : {session: 
     if (role === 'shopOwner') {
         return (
             <div className="flex justify-evenly w-full">
-                <EditButton status={status}/>
+                <EditButton status={status} requestId={requestId}/>
                 <DeleteButton/>
             </div>
         )
@@ -161,10 +161,12 @@ export function RequestInfoButtonGroup({session, status, requestId} : {session: 
     }
 }
 
-function EditButton({status} : {status: string}) {
+function EditButton({status, requestId} : {status: string, requestId: string}) {
 
+  const router = useRouter();
     const handleClick = () => {
-        return null;
+      router.push(`/request/${requestId}/edit`);
+        return;
     }
 
     return (

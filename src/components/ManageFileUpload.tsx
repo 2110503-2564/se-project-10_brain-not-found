@@ -1,16 +1,10 @@
 // src/components/FileInput.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { getSignedUrlForGCSPath } from '@/libs/gcsGetSignedPath';
 
-
-
-
-const getGcsAuthenticatedUrl = (path: string) => {
-    const bucket = process.env.NEXT_PUBLIC_GCS_BUCKET_NAME || 'brain_not_found_app';
-    return `https://storage.cloud.google.com/${bucket}/${path}`;
-}
 
 interface FileInputProps {
   id: string;
@@ -24,6 +18,7 @@ interface FileInputProps {
 
   existingFiles?: string[]; // รายการไฟล์เดิม
   onDeletedUrlsChange?: (deletedUrls: string[]) => void;
+  onCurrentFilesChange?: (currentUrls: string[]) => void;
 }
 
 const ManageFileUpload: React.FC<FileInputProps> = ({
@@ -36,12 +31,36 @@ const ManageFileUpload: React.FC<FileInputProps> = ({
   required = false,
   multiple = false, // ค่า default เป็น false
   existingFiles = [],
-  onDeletedUrlsChange= [],
+  onDeletedUrlsChange,
+  onCurrentFilesChange,
 }) => {
 
     // console.log(existingFiles);
 
     const [deletedImageURLs, setDeletedImageURLs] = useState<string[]>([]);
+    const updateCurrentFiles = (updatedDeletedUrls: string[]) => {
+        const currentFiles = existingFiles.filter(file => !updatedDeletedUrls.includes(file));
+        if (onCurrentFilesChange) {
+          onCurrentFilesChange(currentFiles);
+        }
+      };
+    
+      const [signedCertificateURL, setSignedCertificateURL] = useState<string | null>(null);
+
+      useEffect(() => {
+        const fetchSignedUrl = async () => {
+          if (name === 'licenseDocFile' && existingFiles[0]) {
+            try {
+              const signedUrl = await getSignedUrlForGCSPath(existingFiles[0]);
+              setSignedCertificateURL(signedUrl);
+            } catch (err) {
+              console.error("Failed to generate signed URL for certificate:", err);
+            }
+          }
+        };
+      
+        fetchSignedUrl();
+      }, [existingFiles[0], name]);
 
   return (
     <div>
@@ -59,7 +78,7 @@ const ManageFileUpload: React.FC<FileInputProps> = ({
               <div key={file} className="relative group border p-1 rounded shadow-sm">
                 
                 <img
-                  src={name!== 'licenseDocFile'?file:getGcsAuthenticatedUrl(file)} // ใช้ helper function สร้าง URL เต็ม
+                  src={name!== 'licenseDocFile'?file:signedCertificateURL||''} // ใช้ helper function สร้าง URL เต็ม
                   alt={`${name} Picture`}
                   className="object-cover rounded"
                 //   onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.png'; }} // Fallback image
@@ -71,6 +90,7 @@ const ManageFileUpload: React.FC<FileInputProps> = ({
                         e.preventDefault();
                         setDeletedImageURLs((prev) => {
                           const updated = deletedImageURLs.includes(file) ? deletedImageURLs : [...prev, file];
+                          updateCurrentFiles(updated);
                           if (onDeletedUrlsChange) {
                             onDeletedUrlsChange(updated); // <--- เรียกตรงนี้
                           }
@@ -99,7 +119,7 @@ const ManageFileUpload: React.FC<FileInputProps> = ({
       {deletedImageURLs.map((file) => (
         <div key={file} className="relative group border p-1 rounded shadow-sm">
           <img
-            src={name !== 'licenseDocFile' ? file : getGcsAuthenticatedUrl(file)}
+            src={name !== 'licenseDocFile' ? file : signedCertificateURL||''}
             alt={`${name} Picture`}
             className="object-cover rounded"
           />
@@ -109,7 +129,9 @@ const ManageFileUpload: React.FC<FileInputProps> = ({
             onClick={(e) => {
                 e.preventDefault();
                 setDeletedImageURLs((prev) => {
+                    console.log(signedCertificateURL);
                   const updated = prev.filter((url) => url !== file);
+                  updateCurrentFiles(updated);
                   if (onDeletedUrlsChange) {
                     onDeletedUrlsChange(updated); // <--- เรียกตรงนี้ด้วย
                   }
