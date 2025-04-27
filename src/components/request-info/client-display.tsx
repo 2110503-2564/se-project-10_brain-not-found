@@ -35,6 +35,7 @@ export function RequestInfoClientDisplay({
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
+    const [index, setIndex] = useState(0);
 
     const openModal = (imageUrl: string) => {
         setModalImageUrl(imageUrl);
@@ -45,6 +46,13 @@ export function RequestInfoClientDisplay({
         setIsModalOpen(false);
         setModalImageUrl(null);
     };
+
+    const handleImageChange = (e : React.MouseEvent) => {
+        e.stopPropagation();
+        if (modalImageUrl === certificateSignedUrl || modalImageUrl === null) return;
+        setIndex((index) => (index + 1) % shop.picture.length);
+        setModalImageUrl(shop.picture[index]);
+    }
 
     // Picture dimensions (can be adjusted)
     const SHOP_PICTURE_SIZE = { width: 350, height: 350 };
@@ -158,7 +166,7 @@ export function RequestInfoClientDisplay({
                 >
                     <div
                         className="relative max-w-[90vw] max-h-[90vh] bg-white p-2 rounded shadow-lg"
-                        onClick={(e) => e.stopPropagation()} // Prevent closing when clicking the image container itself
+                        onClick={handleImageChange} // Prevent closing when clicking the image container itself
                     >
                         {/* Close Button */}
                         <button
