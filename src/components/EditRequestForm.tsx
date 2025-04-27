@@ -6,12 +6,12 @@ import { useSession } from 'next-auth/react';
 
 // --- Import Components ย่อย ---
 import ServiceList from './ServiceList';
-import FileUploadInput from './FileUploadInput';
+import ManageFileUpload from './ManageFileUpload';
 import ServiceForm from './ServiceForm';
 
 // --- Import API functions ---
 import editShopRequest from '@/libs/editShopRequest';
-import { uploadFileToGCSAction, deleteFileFromGCS } from '@/libs/gcsUpload'; // Adjust path if needed
+import { uploadFileToGCSAction } from '@/libs/gcsUpload'; // Adjust path if needed
 import getRequest from '@/libs/getRequest';
 import Image from 'next/image';
 
@@ -29,6 +29,8 @@ interface ShopFormData {
     closeTime: string;
     services: Service[]; // Keep client-side ID for list management
     shopImageFiles: File[]; // Changed to array for multiple files
+    oldshopImageURL: String[];
+    oldCertImageURL: String[];
     licenseDocFile: File | null; // Keep as single file for now, adjust if needed
 }
 
@@ -55,6 +57,8 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
     services: [],
     shopImageFiles: [], // Initialize as empty array
     licenseDocFile: null,
+    oldshopImageURL: [],
+    oldCertImageURL: [],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,8 +89,10 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
             openTime: result.data.shop.openTime,
             closeTime: result.data.shop.closeTime,
             services: result.data.shop.services,
-            shopImageFiles: result.data.shop.picture, // **ยังไม่สามารถโหลด File ตรงนี้ ต้องแยกทำ**
-            licenseDocFile: result.data.shop.certificate // **เหมือนกัน**
+            shopImageFiles: [], // Initialize as empty array
+            oldshopImageURL: result.data.shop.picture,
+            licenseDocFile: null,
+            oldCertImageURL: [result.data.shop.certificate as string]// **เหมือนกัน**
           });
         } else {
           setError('Failed to load request data.');
@@ -398,7 +404,7 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
          </div>
 
         {/* Section: Open-Close time, Image, License */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
             {/* Open-Close time */}
             <div className="border p-4 rounded-md">
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Operating Hours</h3>
@@ -408,7 +414,7 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
                     <input
                        type="time" id="openTime" name="openTime" required
                        value={formData.openTime} onChange={handleInputChange}
-                       className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                       className="shadow appearance-none border rounded w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     />
                  </div>
                  {/* Close Time */}
@@ -417,21 +423,25 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
                     <input
                        type="time" id="closeTime" name="closeTime" required
                        value={formData.closeTime} onChange={handleInputChange}
-                       className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                       className="shadow appearance-none border rounded w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     />
                  </div>
             </div>
 
+        </div>
             {/* Your Shop image (Multiple) */}
              <div className="border p-4 rounded-md">
                  <h3 className="text-lg font-semibold mb-4 text-gray-800">Shop Images:</h3>
-                 <FileUploadInput
+                 <ManageFileUpload
                     id="shopImageFiles" // Match state key
                     name="shopImageFiles" // Match state key
                     label="Shop Images (Optional)"
                     accept="image/jpeg, image/png, image/gif"
                     onChange={handleFileChange}
                     fileName={displaySelectedFileNames(formData.shopImageFiles)} // Display multiple file info
+                    existingFiles={formData.oldshopImageURL as string[]}
+                    // onDeleteExisting={(fileToDelete: File) => {}}
+                    // newFileObjects={null}
                     multiple={true} // Allow multiple file selection
                     required={true}
                  />
@@ -440,18 +450,18 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
              {/* ใบรับรอง (Single) */}
              <div className="border p-4 rounded-md">
                  <h3 className="text-lg font-semibold mb-4 text-gray-800">Certificate:</h3>
-                 <FileUploadInput
+                 <ManageFileUpload
                     id="licenseDocFile"
                     name="licenseDocFile"
                     label="Certificate (Optional)"
                     accept=".pdf, image/jpeg, image/png"
                     onChange={handleFileChange}
                     fileName={formData.licenseDocFile?.name}
+                    existingFiles={formData.oldCertImageURL as string[]}
                     required={true}
                     // multiple={false} // Default is false, explicitly set if needed
                  />
              </div>
-        </div>
 
         {/* Section: Services offered */}
         <div className="border p-4 rounded-md">
