@@ -70,7 +70,7 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
     const fetchRequest = async () => {
       try {
         const result = await getRequest(requestId, session.user.token);
-  
+
         if (!session || session.user.role !== 'shopOwner' || result.data.user._id !== session.user._id) {
           router.push('/');
         }
@@ -91,8 +91,8 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
             services: result.data.shop.services,
             shopImageFiles: [], // Initialize as empty array
             oldshopImageURL: result.data.shop.picture,
-            licenseDocFile: null,
-            oldCertImageURL: [result.data.shop.certificate as string]// **เหมือนกัน**
+            oldCertImageURL: [result.data.shop.certificate as string],// **เหมือนกัน**
+            licenseDocFile: null
           });
         } else {
           setError('Failed to load request data.');
