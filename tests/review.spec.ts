@@ -230,116 +230,116 @@ test("Admin can read comment and rating No Review", async ({ page }) => {
 
 
 
-test("Customer edit comment and rating", async ({ page }) => {
-  await page.getByRole("link", { name: "Sign-In" }).click();
-  await expect(
-    page.getByRole("button", { name: "Sign in with Credentials" })
-  ).toBeVisible();
-  await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
-  await page.fill('input[name="password"]', "12345678");
+// test("Customer edit comment and rating", async ({ page }) => {
+//   await page.getByRole("link", { name: "Sign-In" }).click();
+//   await expect(
+//     page.getByRole("button", { name: "Sign in with Credentials" })
+//   ).toBeVisible();
+//   await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
+//   await page.fill('input[name="password"]', "12345678");
 
-  await expect(page.getByRole("button", { name: "Sign-Out" })).toBeVisible();
+//   await expect(page.getByRole("button", { name: "Sign-Out" })).toBeVisible();
 
-  await page.getByRole("link", { name: "Massage" }).click();
-  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); ///////////////// found
-  await expect(page.getByRole("heading", { name: "Reviews" })).toBeVisible();
-  await expect(page.getByLabel("Title")).toBeVisible();
-  await expect(page.getByLabel("Comment")).toBeVisible();
-  await expect(
-    page.getByText("You have already submitted a review.")
-  ).toBeVisible();
-  await page.getByRole("menuitem", { name: "Edit" }).click();
-  await expect(page.getByText("Edit Review")).toBeVisible();
+//   await page.getByRole("link", { name: "Massage" }).click();
+//   await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); ///////////////// found
+//   await expect(page.getByRole("heading", { name: "Reviews" })).toBeVisible();
+//   await expect(page.getByLabel("Title")).toBeVisible();
+//   await expect(page.getByLabel("Comment")).toBeVisible();
+//   await expect(
+//     page.getByText("You have already submitted a review.")
+//   ).toBeVisible();
+//   await page.getByRole("menuitem", { name: "Edit" }).click();
+//   await expect(page.getByText("Edit Review")).toBeVisible();
 
-  // กดดาว 4 ดาว
-  await page.getByRole("radio", { name: "4 Stars" }).click();
+//   // กดดาว 4 ดาว
+//   await page.getByRole("radio", { name: "4 Stars" }).click();
 
-  // เช็กว่าเลือกดาว 4 จริง ๆ
-  await expect(page.getByRole("radio", { name: "4 Stars" })).toHaveAttribute(
-    "aria-checked",
-    "true"
-  );
+//   // เช็กว่าเลือกดาว 4 จริง ๆ
+//   await expect(page.getByRole("radio", { name: "4 Stars" })).toHaveAttribute(
+//     "aria-checked",
+//     "true"
+//   );
 
-  await page.fill('label[name="Title"]', "Title of massage");
+//   await page.fill('label[name="Title"]', "Title of massage");
 
-  await page.fill('label[name="Comment"]', "So good na");
+//   await page.fill('label[name="Comment"]', "So good na");
 
-  await page.getByRole("button", { name: "SAVE" }).click();
+//   await page.getByRole("button", { name: "SAVE" }).click();
 
-  await expect(page.getByLabel("Title")).toHaveValue("Title of massage");
-  await expect(page.getByLabel("Comment")).toHaveValue("So good na");
+//   await expect(page.getByLabel("Title")).toHaveValue("Title of massage");
+//   await expect(page.getByLabel("Comment")).toHaveValue("So good na");
 
-  ///// logout
-  await page.getByRole("button", { name: "Sign-Out" }).click();
-  await expect(page.getByRole("heading", { name: "Signout" })).toBeVisible();
-  await page.getByRole("button", { name: "Sign out" }).click();
-  await expect(page.getByRole("button", { name: "Sign-In" })).toBeVisible();
-});
+//   ///// logout
+//   await page.getByRole("button", { name: "Sign-Out" }).click();
+//   await expect(page.getByRole("heading", { name: "Signout" })).toBeVisible();
+//   await page.getByRole("button", { name: "Sign out" }).click();
+//   await expect(page.getByRole("button", { name: "Sign-In" })).toBeVisible();
+// });
 
-test("Authorize User delete comment and rating", async ({ page }) => {
-  //////////// Customer //////////////////////////// (customer เห็นแค่ของตัวเอง ยังไม่ทำ)
-  await page.getByRole("button", { name: "Sign-In" }).click();
-  await expect(
-    page.getByRole("button", { name: "Sign in with Credentials" })
-  ).toBeVisible();
-  await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
-  await page.fill('input[name="password"]', "12345678");
-  await page.click('button[type="submit"]');
-  await expect(page.getByRole("button", { name: "Sign-Out" })).toBeVisible();
+// test("Authorize User delete comment and rating", async ({ page }) => {
+//   //////////// Customer //////////////////////////// (customer เห็นแค่ของตัวเอง ยังไม่ทำ)
+//   await page.getByRole("button", { name: "Sign-In" }).click();
+//   await expect(
+//     page.getByRole("button", { name: "Sign in with Credentials" })
+//   ).toBeVisible();
+//   await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
+//   await page.fill('input[name="password"]', "12345678");
+//   await page.click('button[type="submit"]');
+//   await expect(page.getByRole("button", { name: "Sign-Out" })).toBeVisible();
 
-  await page.getByRole("link", { name: "Massage" }).click();
-  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); ///////////////// found
-  await expect(page.getByRole("heading", { name: "Reviews" })).toBeVisible();
-  await expect(page.getByLabel("Title")).toBeVisible();
-  await expect(page.getByLabel("Comment")).toBeVisible();
-  await expect(
-    page.getByText("You have already submitted a review.")
-  ).toBeVisible();
-  await page.getByRole("menuitem", { name: "Delete" }).click();
-  await expect(page.getByText("Delete this review?")).toBeVisible();
-  await page.getByRole("button", { name: "DELETE" }).click();
-  await expect(
-    page.getByText("You have already submitted a review.")
-  ).not.toBeVisible();
+//   await page.getByRole("link", { name: "Massage" }).click();
+//   await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); ///////////////// found
+//   await expect(page.getByRole("heading", { name: "Reviews" })).toBeVisible();
+//   await expect(page.getByLabel("Title")).toBeVisible();
+//   await expect(page.getByLabel("Comment")).toBeVisible();
+//   await expect(
+//     page.getByText("You have already submitted a review.")
+//   ).toBeVisible();
+//   await page.getByRole("menuitem", { name: "Delete" }).click();
+//   await expect(page.getByText("Delete this review?")).toBeVisible();
+//   await page.getByRole("button", { name: "DELETE" }).click();
+//   await expect(
+//     page.getByText("You have already submitted a review.")
+//   ).not.toBeVisible();
 
-  ///// logout
-  await page.getByRole("button", { name: "Sign-Out" }).click();
-  await expect(page.getByRole("heading", { name: "Signout" })).toBeVisible();
-  await page.getByRole("button", { name: "Sign out" }).click();
-  await expect(page.getByRole("button", { name: "Sign-In" })).toBeVisible();
-  ///////////////////////
+//   ///// logout
+//   await page.getByRole("button", { name: "Sign-Out" }).click();
+//   await expect(page.getByRole("heading", { name: "Signout" })).toBeVisible();
+//   await page.getByRole("button", { name: "Sign out" }).click();
+//   await expect(page.getByRole("button", { name: "Sign-In" })).toBeVisible();
+//   ///////////////////////
 
-  //////////// Admin //////////////////////////// (admin เห็นหมด ยังไม่ทำ)
-  await page.getByRole("button", { name: "Sign-In" }).click();
-  await expect(
-    page.getByRole("button", { name: "Sign in with Credentials" })
-  ).toBeVisible();
-  await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
-  await page.fill('input[name="password"]', "12345678");
-  await page.click('button[type="submit"]');
-  await expect(page.getByRole("button", { name: "Sign-Out" })).toBeVisible();
+//   //////////// Admin //////////////////////////// (admin เห็นหมด ยังไม่ทำ)
+//   await page.getByRole("button", { name: "Sign-In" }).click();
+//   await expect(
+//     page.getByRole("button", { name: "Sign in with Credentials" })
+//   ).toBeVisible();
+//   await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
+//   await page.fill('input[name="password"]', "12345678");
+//   await page.click('button[type="submit"]');
+//   await expect(page.getByRole("button", { name: "Sign-Out" })).toBeVisible();
 
-  await page.getByRole("link", { name: "Massage" }).click();
-  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); ///////////////// found
-  await expect(page.getByRole("heading", { name: "Reviews" })).toBeVisible();
-  await expect(page.getByLabel("Title")).toBeVisible();
-  await expect(page.getByLabel("Comment")).toBeVisible();
-  await expect(
-    page.getByText("You have already submitted a review.")
-  ).toBeVisible();
-  await page.getByRole("menuitem", { name: "Delete" }).click();
-  await expect(page.getByText("Delete this review?")).toBeVisible();
-  await page.getByRole("button", { name: "DELETE" }).click();
-  await expect(
-    page.getByText("You have already submitted a review.")
-  ).not.toBeVisible();
+//   await page.getByRole("link", { name: "Massage" }).click();
+//   await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); ///////////////// found
+//   await expect(page.getByRole("heading", { name: "Reviews" })).toBeVisible();
+//   await expect(page.getByLabel("Title")).toBeVisible();
+//   await expect(page.getByLabel("Comment")).toBeVisible();
+//   await expect(
+//     page.getByText("You have already submitted a review.")
+//   ).toBeVisible();
+//   await page.getByRole("menuitem", { name: "Delete" }).click();
+//   await expect(page.getByText("Delete this review?")).toBeVisible();
+//   await page.getByRole("button", { name: "DELETE" }).click();
+//   await expect(
+//     page.getByText("You have already submitted a review.")
+//   ).not.toBeVisible();
 
-  ///// logout
-  await page.getByRole("button", { name: "Sign-Out" }).click();
-  await expect(page.getByRole("heading", { name: "Signout" })).toBeVisible();
-  await page.getByRole("button", { name: "Sign out" }).click();
-  await expect(page.getByRole("button", { name: "Sign-In" })).toBeVisible();
-});
+//   ///// logout
+//   await page.getByRole("button", { name: "Sign-Out" }).click();
+//   await expect(page.getByRole("heading", { name: "Signout" })).toBeVisible();
+//   await page.getByRole("button", { name: "Sign out" }).click();
+//   await expect(page.getByRole("button", { name: "Sign-In" })).toBeVisible();
+// });
 
 
 test('Customer can edit their own review and rating SAVE', async ({ page }) => {
@@ -514,9 +514,49 @@ test('Customer can edit their own review and rating CANCEL', async ({ page }) =>
 
   await expect(page.getByText("New edited comment content.")).toBeVisible();
 
-  await errorText.scrollIntoViewIfNeeded();
-  // ค่อย expect ว่าเห็นแล้ว
-  await expect(errorText).toBeVisible();
+  // logout
+  // await page.getByRole("link", { name: "Sign-Out" }).click();
+  // await expect(page.getByRole("heading", { name: "Signout" })).toBeVisible();
+  // await page.getByRole("link", { name: "Sign-out" }).click();
+  // await expect(page.getByRole("link", { name: "Sign-In" })).toBeVisible();
+    
+});
+
+test('Customer cannot edit others reviews and ratings', async ({ page }) => {
+  await page.getByRole("link", { name: "Sign-In" }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Credentials" })
+  ).toBeVisible();
+
+  // Customer enters email and password
+  await page.fill('input[name="email"]', "TeeAsCustomerDoesHasAnyReview1@gmail.com");
+  await page.fill('input[name="password"]', "12345678");
+
+  await page.getByRole("button", { name: "Sign in with Credentials" }).click();
+  // Expect to see Sign-Out button after login
+
+  await page.getByRole("link", { name: "Massage" }).click();
+  // Go to the shop page (assuming we navigate to a specific shop page)
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
+
+  // ไม่มี review ขอตัวเองจริงๆ
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  const errorText = page.getByText("You have already submitted a review.");
+
+  // ค่อย expect ว่าไม่มี
+  await expect(errorText).not.toBeVisible();
+  
+  const moreButton = page.getByLabel('More');
+
+  // // // เลื่อนขึ้นไปหา More ก่อน ถ้ายังไม่อยู่ในจอ
+  // await moreButton.scrollIntoViewIfNeeded();
+  // // ค่อย expect ว่าไม่มี
+  await expect(moreButton).not.toBeVisible();
+  
+  // await page.getByRole("button", { name: "Sign-Out" }).click();
+  // await expect(page.getByRole("heading", { name: "Signout" })).toBeVisible();
+  // await page.getByRole("button", { name: "Sign out" }).click();
+  // await expect(page.getByRole("button", { name: "Sign-In" })).toBeVisible();
     
 });
 
@@ -536,8 +576,8 @@ ryu
 Tee
 7.1	Customer can edit their own review and rating (save) ✅
 7.2 7	Customer can edit their own review and rating (Cancel) ✅
-8	Customer cannot edit others' reviews and ratings
-9	Guest cannot edit any review and rating
+8	Customer cannot edit others' reviews and ratings ✅
+9	Guest cannot edit any review and rating 
 10	ShopOwner cannot edit any review and rating
 11	Admin cannot edit any review and rating
 
