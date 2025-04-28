@@ -408,6 +408,8 @@ test('Customer can edit their own review and rating SAVE', async ({ page }) => {
   await page.getByLabel('Save in Edit').isVisible();
   await page.getByLabel('Save in Edit').click();
 
+  await page.waitForLoadState('networkidle');
+
   // เปลี่ยน comment จริงนะ
   await expect(
     page.getByText("New Edited Title")
@@ -443,7 +445,6 @@ test('Customer can edit their own review and rating CANCEL', async ({ page }) =>
   // มี review ขอตัวเองจริงๆ
   await page.waitForLoadState("networkidle"); // รอให้ network
   await page.getByText("TeeAsCustomer3");
-  const errorText = page.getByText("You have already submitted a review.");
   
   // มีหลังจาก Edit SAVE
   await page.getByText("New Edited Title").scrollIntoViewIfNeeded();
@@ -452,7 +453,11 @@ test('Customer can edit their own review and rating CANCEL', async ({ page }) =>
   await page.getByText("New edited comment content").scrollIntoViewIfNeeded();
   await expect(page.getByText("New edited comment content")).toBeVisible();
 
-  
+
+  await page.waitForLoadState('networkidle');
+
+  await page.waitForLoadState('networkidle'); // รอให้หน้าโหลดเสร็จสมบูรณ์
+  const errorText = page.getByText("You have already submitted a review.");
   // เลื่อนลงไปหา element ถ้ายังไม่อยู่ในจอ
   await errorText.scrollIntoViewIfNeeded();
 
@@ -508,11 +513,6 @@ test('Customer can edit their own review and rating CANCEL', async ({ page }) =>
 
   await expect(page.getByText("New edited comment content.")).toBeVisible();
 
-  // logout
-  // await page.getByRole("link", { name: "Sign-Out" }).click();
-  // await expect(page.getByRole("heading", { name: "Signout" })).toBeVisible();
-  // await page.getByRole("link", { name: "Sign-out" }).click();
-  // await expect(page.getByRole("link", { name: "Sign-In" })).toBeVisible();
     
 });
 
@@ -542,15 +542,82 @@ test('Customer cannot edit others reviews and ratings', async ({ page }) => {
   
   const moreButton = page.getByLabel('More');
 
-  // // // เลื่อนขึ้นไปหา More ก่อน ถ้ายังไม่อยู่ในจอ
-  // await moreButton.scrollIntoViewIfNeeded();
-  // // ค่อย expect ว่าไม่มี
   await expect(moreButton).not.toBeVisible();
+    
+});
+
+test('Guest cannot edit any review and rating', async ({ page }) => {
+  await page.getByRole("link", { name: "Massage" }).click();
+  // Go to the shop page (assuming we navigate to a specific shop page)
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
+
+  // ไม่มี review ขอตัวเองจริงๆ
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  const errorText = page.getByText("You have already submitted a review.");
+  // ค่อย expect ว่าไม่มี
+  await expect(errorText).not.toBeVisible();
+
   
-  // await page.getByRole("button", { name: "Sign-Out" }).click();
-  // await expect(page.getByRole("heading", { name: "Signout" })).toBeVisible();
-  // await page.getByRole("button", { name: "Sign out" }).click();
-  // await expect(page.getByRole("button", { name: "Sign-In" })).toBeVisible();
+  const moreButton = page.getByLabel('More');
+
+  await expect(moreButton).not.toBeVisible();
+    
+});
+
+test('ShopOwner cannot edit any review and rating', async ({ page }) => {
+  await page.getByRole("link", { name: "Sign-In" }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Credentials" })
+  ).toBeVisible();
+
+  // Customer enters email and password
+  await page.fill('input[name="email"]', "shopOwner3@gmail.com");
+  await page.fill('input[name="password"]', "123456789");
+
+  await page.getByRole("button", { name: "Sign in with Credentials" }).click();
+  await page.getByRole("link", { name: "Massage" }).click();
+  // Go to the shop page (assuming we navigate to a specific shop page)
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
+
+  // ไม่มี review ขอตัวเองจริงๆ
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  const errorText = page.getByText("You have already submitted a review.");
+  // ค่อย expect ว่าไม่มี
+  await expect(errorText).not.toBeVisible();
+  
+  
+  const moreButton = page.getByLabel('More');
+
+  await expect(moreButton).not.toBeVisible();
+    
+});
+
+test('Admin cannot edit any review and rating', async ({ page }) => {
+  await page.getByRole("link", { name: "Sign-In" }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Credentials" })
+  ).toBeVisible();
+
+  // Customer enters email and password
+  await page.fill('input[name="email"]', "adminTee@gmail.com");
+  await page.fill('input[name="password"]', "12345678");
+
+  await page.getByRole("button", { name: "Sign in with Credentials" }).click();
+  await page.getByRole("link", { name: "Massage" }).click();
+  // Go to the shop page (assuming we navigate to a specific shop page)
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
+
+  // ไม่มี review ขอตัวเองจริงๆ
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  const errorText = page.getByText("You have already submitted a review.");
+  // ค่อย expect ว่าไม่มี
+  await expect(errorText).not.toBeVisible();
+  
+  
+  
+  const moreButton = page.getByLabel('More');
+
+  await expect(moreButton).not.toBeVisible();
     
 });
 test('Customer delete reviews and ratings DELETE', async ({ page }) => {
@@ -605,9 +672,9 @@ Tee
 7.1	Customer can edit their own review and rating (save) ✅
 7.2 7	Customer can edit their own review and rating (Cancel) ✅
 8	Customer cannot edit others' reviews and ratings ✅
-9	Guest cannot edit any review and rating 
-10	ShopOwner cannot edit any review and rating
-11	Admin cannot edit any review and rating
+9	Guest cannot edit any review and rating ✅
+10	ShopOwner cannot edit any review and rating ✅
+11	Admin cannot edit any review and rating ✅
 
 12	User can delete their own review and rating
 13	User cannot delete others' reviews and ratings
