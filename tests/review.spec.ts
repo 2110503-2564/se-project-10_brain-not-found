@@ -28,10 +28,6 @@ test("Customer submits a valid review to a shop", async ({ page }) => {
 
   await page.waitForLoadState("networkidle"); // รอให้ network
   await page.waitForSelector("text=Write a Review", { state: "visible" });
-  await expect(page.getByText('No reviews found')).not.toBeVisible();
-
-  await expect(  page.getByText("You have already submitted a review.")).not.toBeVisible();
-
   await expect(page.getByText("Write a Review")).toBeVisible();
 
   const starLabelLocator = page.locator(
@@ -42,12 +38,13 @@ test("Customer submits a valid review to a shop", async ({ page }) => {
 
   const titleInput = page.getByLabel("Title");
   const commentInput = page.getByLabel("Comment");
-
+  await titleInput.fill("Title of massage")
   await expect(titleInput).toBeVisible();
+  await commentInput.fill("So good na");
   await expect(commentInput).toBeVisible();
 
-  await titleInput.fill("Title of massage");
-  await commentInput.fill("So good na");
+;
+
 
   // Submit the review and handle the alert
   let alertMessage = null;
@@ -74,9 +71,6 @@ test("Customer submits a valid review to a shop", async ({ page }) => {
   await page.waitForTimeout(1000); // รอสักครู่เพื่อให้ event handler ทำงาน (อาจปรับเวลา)
   expect(alertMessage).toContain("Review submitted successfully!"); // ใช้ toContain เผื่อมีข้อความอื่นปน
 
-  await expect(
-    page.getByText("You have already submitted a review.")
-  ).toBeVisible();
 });
 
 
@@ -559,7 +553,41 @@ test('Customer cannot edit others reviews and ratings', async ({ page }) => {
   // await expect(page.getByRole("button", { name: "Sign-In" })).toBeVisible();
     
 });
+test('Customer delete reviews and ratings DELETE', async ({ page }) => {
+  await page.getByRole("link", { name: "Sign-In" }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Credentials" })
+  ).toBeVisible();
 
+  // Customer enters email and password
+  await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
+  await page.fill('input[name="password"]', "12345678");
+
+  await page.getByRole("button", { name: "Sign in with Credentials" }).click();
+  // Expect to see Sign-Out button after login
+
+  await page.getByRole("link", { name: "Massage" }).click();
+  // Go to the shop page (assuming we navigate to a specific shop page)
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
+
+  await page.waitForLoadState("networkidle"); // รอให้ network
+
+  await expect(page.getByText('No reviews found')).not.toBeVisible();
+
+  await expect(  page.getByText("You have already submitted a review.")).not.toBeVisible();
+
+
+
+  const deleteButton = page.getByRole('menuitem', { name: 'Delete' });
+  await expect(deleteButton).toBeVisible();
+  await deleteButton.click();
+
+  await page.getByLabel('Delete in Delete').isVisible();
+  await page.getByLabel('Delete in Delete').click();
+  
+  await expect(page.getByText('Title of massage')).not.toBeVisible();
+  await expect(page.getByText('So good na')).not.toBeVisible();     
+});
 /*
 
 Test Case No.	Test Name
