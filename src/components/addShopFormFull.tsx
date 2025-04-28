@@ -598,14 +598,29 @@ const addShopFormFull: React.FC = () => {
                       {isSubmitting ? 'Submitting Request...' : 'Submit Shop Request'}
                   </button>
               </div>
-
-           {error && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-                  <strong className="font-bold">Error: </strong>
-                  <span className="block sm:inline">{error}</span>
-              </div>
-          )}
-          </form>
+              </form>
+              
+              <div className="py-6">
+              {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    <strong className="font-bold">Error:</strong>
+                    {typeof error === 'string' && error.startsWith('Request validation failed:') ? (
+                        // ใช้ Regex ในการ split และกรองค่าว่างออก
+                        <ul className="list-disc list-inside mt-1">
+                            {error.substring('Request validation failed:'.length)
+                                  .split(/\s*,\s*/) // <--- แก้ไขตรงนี้: ใช้ Regex แยกด้วย , โดยไม่สนช่องว่างรอบๆ
+                                  .filter(msg => msg.trim() !== '') // กรองข้อความว่างๆ ที่อาจเกิดจากการ split
+                                  .map((errMsg, index) => (
+                                      <li key={index}>{errMsg.replace(/^shop\./, '').trim()}</li>
+                                  ))
+                            }
+                        </ul>
+                    ) : typeof error === 'string' ? (
+                        <span className="block sm:inline ml-1">{error}</span>
+                    ) : null }
+                </div>
+            )}
+          </div>
                   {/* --- Confirmation Dialog (เหมือนเดิม) --- */}
                   <Dialog disableScrollLock open={openConfirmDialog} onClose={handleCancelSubmit} >
             <DialogTitle>Confirm Submission</DialogTitle>

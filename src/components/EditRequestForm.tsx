@@ -458,6 +458,7 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
       }
     } finally {
         setIsReallySubmitting(false);
+        setOpenConfirmDialog(false); 
     }
   };
 
@@ -827,13 +828,29 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
             </div>
         </form>
 
-        {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-                <strong className="font-bold">Error: </strong>
-                <span className="block sm:inline">{error}</span>
+        <div className="py-6">
+                {error && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                        <strong className="font-bold">Error:</strong>
+                        {/* --- แก้ไขเงื่อนไขตรงนี้ --- */}
+                        {typeof error === 'string' && error.startsWith('Validation failed:') ? (
+                            <ul className="list-disc list-inside mt-1">
+                                {/* --- แก้ไขความยาว substring ตรงนี้ --- */}
+                                {error.substring('Validation failed:'.length)
+                                      .split(/\s*,\s*/) // ใช้ Regex เหมือนเดิม
+                                      .filter(msg => msg.trim() !== '') // กรองค่าว่าง
+                                      .map((errMsg, index) => (
+                                          <li key={index}>{errMsg.replace(/^shop\./, '').trim()}</li>
+                                      ))
+                                }
+                            </ul>
+                        ) : typeof error === 'string' ? (
+                            <span className="block sm:inline ml-1">{error}</span>
+                        ) : null }
+                    </div>
+                )}
             </div>
-        )}
-
+          
         {/* --- Confirmation Dialog (เหมือนเดิม) --- */}
         <Dialog disableScrollLock open={openConfirmDialog} onClose={() => setOpenConfirmDialog(false)} /* ... */ >
             <DialogTitle>Confirm Edit</DialogTitle>
