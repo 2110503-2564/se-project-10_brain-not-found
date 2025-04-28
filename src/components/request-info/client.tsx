@@ -211,7 +211,7 @@ function ApproveButton({status, requestId} : {status: string, requestId: string}
     
         setIsSubmitting(true); // เริ่ม Loading
         try {
-          await approveRequest({ requestId, token });
+          await approveRequest( requestId, token );
           router.refresh();
     
         } catch (error) {
@@ -283,7 +283,7 @@ function RejectButton({status, requestId} : {status: string, requestId: string})
     
         setIsSubmitting(true); // เริ่ม Loading
         try {
-          await rejectRequest({ requestId, reason: rejectReason, token });
+          await rejectRequest( requestId,rejectReason, token );
           router.refresh()
     
         } catch (error) {
