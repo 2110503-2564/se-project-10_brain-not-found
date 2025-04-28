@@ -13,11 +13,13 @@ import ServiceList from './ServiceList';
 import ManageFileUpload from './ManageFileUpload';
 import ServiceForm from './ServiceForm';
 
+import FileUploadInput from './FileUploadInput'; // ยังคงใช้ตัวนี้สำหรับ Input
 // --- Import API functions ---
 import editShopRequest from '@/libs/editShopRequest';
 import { uploadFileToGCSAction, deleteFileFromGCS } from '@/libs/gcsUpload'; // Adjust path if needed
 import getRequest from '@/libs/getRequest';
 import Image from 'next/image';
+import { getSignedUrlForGCSPath } from "@/libs/gcsGetSignedPath";
 
 interface ShopFormData {
     shopName: string;
@@ -33,18 +35,23 @@ interface ShopFormData {
     closeTime: string;
     services: Service[]; // Keep client-side ID for list management
     shopImageFiles: File[]; // Changed to array for multiple files
-    oldshopImageURL: String[];
-    oldCertImageURL: String[];
+    // oldshopImageURL: String[];
+    // oldCertImageURL: String[];
     licenseDocFile: File | null; // Keep as single file for now, adjust if needed
 }
 
-const extractGCSFilePath = (fullUrl: string) => {
-    const baseUrl = "https://storage.googleapis.com/brain_not_found_app/";
-    if (fullUrl.startsWith(baseUrl)) {
-      return fullUrl.substring(baseUrl.length);
-    }
-    return fullUrl; // fallback (เผื่อมันเป็น path อยู่แล้ว)
-  };
+const extractGCSFilePath = (fullUrl: string): string => {
+  const baseUrl = `https://storage.googleapis.com/${process.env.NEXT_PUBLIC_GCS_BUCKET_NAME || 'brain_not_found_app'}/`; 
+  if (fullUrl.startsWith(baseUrl)) {
+    return fullUrl.substring(baseUrl.length);
+  }
+  // Handle cases where URL might already be just the path
+  if (!fullUrl.startsWith('http')) {
+      return fullUrl;
+  }
+  console.warn("Could not extract GCS path from URL:", fullUrl);
+  return fullUrl; // Fallback
+};
 
 interface EditShopFormProps {
     requestId: string;
@@ -52,7 +59,7 @@ interface EditShopFormProps {
 
 const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session , status } = useSession();
 
   const [formData, setFormData] = useState<ShopFormData>({
     shopName: '',
@@ -69,71 +76,119 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
     services: [],
     shopImageFiles: [], // Initialize as empty array
     licenseDocFile: null,
-    oldshopImageURL: [],
-    oldCertImageURL: [],
+    // oldshopImageURL: [],
+    // oldCertImageURL: [],
+
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [deletedImageURLs, setDeletedImageURLs] = useState<string[]>([]);
-  const [deletedCertImageURLs, setDeletedCertImageURLs] = useState<string[]>([]);
-  
-  const [currentShopImageURLs, setCurrentShopImageURLs] = useState<string[]>([]);
-  const [currentCertImageURLs, setCurrentCertImageURLs] = useState<string[]>([]);
 
+// State สำหรับจัดการไฟล์ *เดิม*
+    const [currentShopImageURLs, setCurrentShopImageURLs] = useState<string[]>([]);
+    const [currentCertImageURLs, setCurrentCertImageURLs] = useState<string[]>([]); // เก็บเป็น Array เผื่อกรณี Error
+    const [deletedImageURLs, setDeletedImageURLs] = useState<string[]>([]);
+    const [deletedCertImageURLs, setDeletedCertImageURLs] = useState<string[]>([]);
 
-  const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
-  const [isReallySubmitting, setIsReallySubmitting] = useState(false);
-  
-  // Redirect if not logged in or not a shopOwner
-  useEffect(() => {
-    if (!session || !session.user  ||!requestId) return;
-  
-    const fetchRequest = async () => {
-    try {
-      if (!session.user || !session.user.token) {
-        throw new Error("Session is missing user or token.");
-      }
-        const result = await getRequest(requestId, session.user.token);
+    // State สำหรับ Preview ไฟล์ *ใหม่*
+    const [shopImagePreviewUrls, setShopImagePreviewUrls] = useState<string[]>([]);
+    const [licensePreviewUrl, setLicensePreviewUrl] = useState<string | null>(null);
 
-        if (session.user.role !== 'shopOwner' || result.data.user._id !== session.user._id) {
-          router.push('/');
-          return;
+    const [isSubmitting, setIsSubmitting] = useState(false); // ใช้ isReallySubmitting แทนได้
+    const [error, setError] = useState<string | null>(null);
+    const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+    const [isReallySubmitting, setIsReallySubmitting] = useState(false);
+    const [isLoadingData, setIsLoadingData] = useState(true); // State สำหรับ Loading ข้อมูล
+
+// --- useEffect for Auth & Data Fetching ---
+    useEffect(() => {
+        if (status === 'loading') return; // รอ session โหลดเสร็จ
+
+        if (!session || !session.user || !session.user.token || !requestId) {
+            router.push('/'); // Redirect ถ้าไม่มี session หรือ requestId
+            return;
         }
-  
-        if (result.success && result.data) {
-          setFormData({
-            shopName: result.data.shop.name,
-            phoneNumber: result.data.shop.tel,
-            shopType: result.data.shop.shopType,
-            address: result.data.shop.address,
-            postalcode: result.data.shop.postalcode,
-            region: result.data.shop.region,
-            province: result.data.shop.province,
-            district: result.data.shop.district,
-            description: result.data.shop.desc,
-            openTime: result.data.shop.openTime,
-            closeTime: result.data.shop.closeTime,
-            services: result.data.shop.services,
-            shopImageFiles: [], // Initialize as empty array
-            oldshopImageURL: result.data.shop.picture,
-            oldCertImageURL: [result.data.shop.certificate as string],// **เหมือนกัน**
-            licenseDocFile: null
-          });
-            setCurrentShopImageURLs(result.data.shop.picture);
-            setCurrentCertImageURLs([result.data.shop.certificate as string]);
+
+        const fetchRequest = async () => {
+            setIsLoadingData(true);
+            setError(null);
+            try {
+                const result = await getRequest(requestId, session.user.token);
+
+                if (!result.success || !result.data) {
+                    throw new Error('Failed to load request data.');
+                }
+
+                // ตรวจสอบ Role และ Ownership
+                if (session.user.role !== 'shopOwner' || result.data.user?._id !== session.user._id) {
+                    console.warn("Access denied: User is not the owner or not a shopOwner.");
+                    router.push('/');
+                    return;
+                }
+
+                // ตั้งค่า formData (เฉพาะ field ที่แก้ไขได้)
+                setFormData({
+                    shopName: result.data.shop?.name || '',
+                    phoneNumber: result.data.shop?.tel || '',
+                    shopType: result.data.shop?.shopType || '',
+                    address: result.data.shop?.address || '',
+                    postalcode: result.data.shop?.postalcode || '',
+                    region: result.data.shop?.region || '',
+                    province: result.data.shop?.province || '',
+                    district: result.data.shop?.district || '',
+                    description: result.data.shop?.desc || '',
+                    openTime: result.data.shop?.openTime || '',
+                    closeTime: result.data.shop?.closeTime || '',
+                    // เพิ่ม ID ชั่วคราวให้ service เพื่อใช้ใน ServiceList
+                    services: result.data.shop?.services?.map((s: any) => ({ ...s, id: crypto.randomUUID() })) || [],
+                    shopImageFiles: [], // เริ่มต้นไฟล์ใหม่เป็น Array ว่าง
+                    licenseDocFile: null, // เริ่มต้นไฟล์ใหม่เป็น null
+                });
+                
+                const CertificateURL = await getSignedUrlForGCSPath(result.data.shop.certificate);
+                
+                // ตั้งค่า State สำหรับไฟล์เดิม
+                setCurrentShopImageURLs(result.data.shop?.picture || []);
+                setCurrentCertImageURLs(CertificateURL ? [CertificateURL] : []);
+                setDeletedImageURLs([]); // Reset deleted lists
+                setDeletedCertImageURLs([]);
+
+            } catch (err) {
+                console.error("Error loading request data:", err);
+                setError(err instanceof Error ? err.message : 'Error loading request data.');
+                // อาจจะ Redirect หรือแสดงข้อความ Error ที่ชัดเจนขึ้น
+            } finally {
+                setIsLoadingData(false);
+            }
+        };
+
+        fetchRequest();
+    }, [session, status, requestId, router]); // Dependency array ที่ถูกต้อง
+
+    // --- useEffect for Preview URL Management (สำหรับไฟล์ใหม่) ---
+    useEffect(() => {
+        console.log('[Preview Debug Edit] useEffect triggered');
+        const newShopImageUrls = formData.shopImageFiles.map(file => {
+            const url = URL.createObjectURL(file);
+            console.log(`[Preview Debug Edit] Created Shop Image URL: ${url} for ${file.name}`);
+            return url;
+        });
+        setShopImagePreviewUrls(newShopImageUrls);
+
+        let newLicenseUrl: string | null = null;
+        if (formData.licenseDocFile) {
+            newLicenseUrl = URL.createObjectURL(formData.licenseDocFile);
+            console.log(`[Preview Debug Edit] Created License URL: ${newLicenseUrl} for ${formData.licenseDocFile.name}`);
         } else {
-          setError('Failed to load request data.');
+            console.log('[Preview Debug Edit] No new license file to create URL for.');
         }
-      } catch (err) {
-        console.error(err);
-        setError('Error loading request data.');
-      }
-    };
-    setError(''); /*แก้เฉพาะหน้า ในtry รันโค้ดได้จนจบแล้วแต่ยัง catch error อยู่ */
-  
-    fetchRequest(); // <<< --------------------- เรียกมันตรงนี้
-  }, [session, requestId]);
+        setLicensePreviewUrl(newLicenseUrl);
 
+        return () => {
+            console.log('[Preview Debug Edit] Cleanup: Revoking URLs');
+            newShopImageUrls.forEach(url => URL.revokeObjectURL(url));
+            if (newLicenseUrl) {
+                URL.revokeObjectURL(newLicenseUrl);
+            }
+        };
+    }, [formData.shopImageFiles, formData.licenseDocFile]);
 
   // --- Handlers ---
   const handleInputChange = (
@@ -144,28 +199,47 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, files } = e.target;
-    setError(null);
+// ปรับ handleFileChange ให้เพิ่มรูปภาพใหม่
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, files } = e.target;
+        console.log(`[Debug Edit] handleFileChange triggered for name: "${name}"`, files);
+        setError(null);
 
-    if (files && files.length > 0) {
-      if (name === 'shopImageFiles') { // Handle multiple files for shop images
-        setFormData((prev) => ({
-          ...prev,
-          shopImageFiles: Array.from(files), // Convert FileList to Array
-        }));
-      } else { // Handle single file for other inputs (like license)
-        setFormData((prev) => ({ ...prev, [name]: files[0] }));
-      }
-    } else {
-      // Clear the specific file input state
-       if (name === 'shopImageFiles') {
-            setFormData((prev) => ({ ...prev, shopImageFiles: [] }));
-       } else {
-            setFormData((prev) => ({ ...prev, [name]: null }));
-       }
-    }
-  };
+        if (files && files.length > 0) {
+            if (name === 'shopImageFiles') {
+                const newFilesArray = Array.from(files);
+                setFormData((prev) => {
+                    // รวม Array ไฟล์ใหม่กับ Array ไฟล์ใหม่ที่เลือก
+                    const combinedFiles = [...prev.shopImageFiles, ...newFilesArray];
+                    // *** เพิ่ม: จำกัดจำนวนไฟล์ใหม่ + ไฟล์เดิม ไม่ให้เกิน 5 ***
+                    const totalImagesAfterAdd = currentShopImageURLs.length + combinedFiles.length;
+                    if (totalImagesAfterAdd > 5) {
+                        setError("Cannot add more images. Maximum limit is 5.");
+                        return prev; // ไม่ต้องอัปเดต state ถ้าเกิน limit
+                    }
+                    const newState = { ...prev, shopImageFiles: combinedFiles };
+                    console.log('[Debug Edit] New state after appending shopImageFiles:', newState);
+                    return newState;
+                });
+            } else { // Handles 'licenseDocFile' (แทนที่ไฟล์ใหม่)
+                const fileToSet = files[0];
+                // *** เพิ่ม: ตรวจสอบว่ามี Certificate เดิมอยู่หรือไม่ ถ้ามี ให้แจ้งเตือนหรือจัดการ ***
+                if (currentCertImageURLs.length > 0) {
+                    // อาจจะ alert หรือ set error
+                    console.warn("Replacing existing certificate with a new one.");
+                    // หรือจะ Mark อันเก่าให้ลบอัตโนมัติก็ได้
+                    // handleMarkForDeletion(currentCertImageURLs[0], 'certificate');
+                }
+                setFormData((prev) => {
+                    const newState = { ...prev, [name]: fileToSet };
+                    console.log(`[Debug Edit] New state after setting ${name}:`, newState);
+                    return newState;
+                });
+            }
+        }
+        // Reset input value เพื่อให้เลือกไฟล์เดิมซ้ำได้
+        e.target.value = '';
+    };
 
   const handleAddService = (newServiceData: Omit<Service, 'id'>) => {
     setError(null);
@@ -187,113 +261,169 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
     }));
   };
 
+  // Handlers สำหรับจัดการไฟล์ *ใหม่* ที่เลือก
+  const handleRemoveNewShopImage = (indexToRemove: number) => {
+    setError(null);
+    setFormData((prev) => ({
+        ...prev,
+        shopImageFiles: prev.shopImageFiles.filter((_, index) => index !== indexToRemove),
+    }));
+};
+
+const handleRemoveNewLicense = () => {
+    setError(null);
+    setFormData((prev) => ({
+        ...prev,
+        licenseDocFile: null,
+    }));
+};
+
+const handleClearAllNewShopImages = () => {
+    setError(null);
+    setFormData((prev) => ({
+        ...prev,
+        shopImageFiles: [],
+    }));
+    console.log('[Debug Edit] Cleared all new shop images.');
+};
+
+// Handlers สำหรับจัดการไฟล์ *เดิม*
+const handleMarkForDeletion = (urlToDelete: string, type: 'shop' | 'certificate') => {
+  if (type === 'shop') {
+      setCurrentShopImageURLs((prev) => prev.filter(url => url !== urlToDelete));
+      setDeletedImageURLs((prev) => [...prev, urlToDelete]);
+  } else {
+      setCurrentCertImageURLs([]); // Certificate มีได้อันเดียว
+      setDeletedCertImageURLs((prev) => [...prev, urlToDelete]);
+  }
+};
+
+const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate') => {
+  if (type === 'shop') {
+      // *** เพิ่ม: เช็คจำนวนก่อน Restore ไม่ให้เกิน 5 ***
+      if (currentShopImageURLs.length + formData.shopImageFiles.length >= 5) {
+           setError("Cannot restore image. Maximum limit of 5 reached.");
+           return;
+      }
+      setDeletedImageURLs((prev) => prev.filter(url => url !== urlToRestore));
+      setCurrentShopImageURLs((prev) => [...prev, urlToRestore]);
+  } else {
+      // *** เพิ่ม: เช็คว่ามี Certificate ใหม่ หรือ Certificate เดิมอื่นอยู่หรือไม่ ***
+      if (formData.licenseDocFile || currentCertImageURLs.length > 0) {
+          setError("Cannot restore certificate. Another certificate already exists or is selected.");
+          return;
+      }
+      setDeletedCertImageURLs((prev) => prev.filter(url => url !== urlToRestore));
+      setCurrentCertImageURLs([urlToRestore]);
+  }
+};
+
   // --- Submit Handler ---
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
-    
+
+    // --- Validation (ปรับปรุง) ---
+    const totalCurrentImages = currentShopImageURLs.length + formData.shopImageFiles.length;
+    if (totalCurrentImages < 1 || totalCurrentImages > 5) {
+        setError(`You must have between 1 and 5 shop images (Current: ${currentShopImageURLs.length}, New: ${formData.shopImageFiles.length}).`);
+        return; // ใช้ return แทน throw Error ใน validation เริ่มต้น
+    }
+
+    const totalCurrentCert = currentCertImageURLs.length + (formData.licenseDocFile ? 1 : 0);
+    if (totalCurrentCert !== 1) {
+        setError(`You must have exactly 1 certificate (Current: ${currentCertImageURLs.length}, New: ${formData.licenseDocFile ? 1 : 0}).`);
+        return;
+    }
+
     // --- Authentication Check ---
     if (!session || !session.user || !session.user.token || session.user.role !== 'shopOwner') {
         setError('Authentication failed or insufficient permissions.');
       return;
     }
-
-    const totalImages = (currentShopImageURLs.length | formData.oldshopImageURL.length) + formData.shopImageFiles.length;
-    if (totalImages < 1 || totalImages > 5) {
-      setError('You must have between 1 and 5 shop images.');
-      throw new Error(`You must have between 1 and 5 shop images. Now you have ${totalImages} `);
-    }
-    if((formData.licenseDocFile && currentCertImageURLs.length >= 1 )||(!formData.licenseDocFile && currentCertImageURLs.length === 0) ){
-        
-      setError('You must have 1 Certificate.');
-      throw new Error('You must have 1 Certificate.');
-    }
-
     setOpenConfirmDialog(true);
-    
     };
     
-    const handleConfirmEdit = async () => {
 
+    const handleConfirmEdit = async () => {
     if (!session || !session.user || !session.user.token || session.user.role !== 'shopOwner') {
         setError('Authentication failed or insufficient permissions.');
+        setOpenConfirmDialog(false);
         return;
     }
     
     setIsReallySubmitting(true);
-    
-    let pictureUrls: string[] = []; // Array for multiple image URLs
-    let certificateUrl: string | undefined = undefined; // Single URL for license/certificate
+    setError(null);
+
+    let uploadedNewPictureUrls: string[] = [];
+    let uploadedNewCertificateUrl: string | undefined = undefined;
+
     try {
-        
-        
-        // --- 1. อัปโหลดรูปภาพร้านค้า (ถ้ามี) ---
-        if (formData.shopImageFiles && formData.shopImageFiles.length > 0) {
-            console.log(`Uploading ${formData.shopImageFiles.length} shop images...`);
-            
-            // สร้าง Array ของ Promises: แต่ละ Promise คือการเรียก uploadFileToGCSAction สำหรับ 1 ไฟล์
-            const uploadPromises = formData.shopImageFiles.map(file => {
-            const fileFormData = new FormData();
-            fileFormData.append('file', file);
-            fileFormData.append('folder', 'shop_pictures/'); // <-- ระบุ folder ปลายทาง
-            // สามารถเพิ่ม 'allowedTypes', 'maxSize' ได้ถ้า Server Action รองรับ
-            // fileFormData.append('allowedTypes', 'image/jpeg,image/png');
-            
-            // เรียก Server Action แล้ว return Promise ที่ได้กลับไป
-            return uploadFileToGCSAction(fileFormData);
-        });
-        
-        // ใช้ Promise.all รอให้ทุก Promises ใน Array ทำงานเสร็จ
-        // ผลลัพธ์ (shopPictureUrls) จะเป็น Array ของ URL ตามลำดับไฟล์ที่ส่งไป
-        pictureUrls = await Promise.all(uploadPromises);
-        
-        console.log('Shop images uploaded successfully:', pictureUrls);
-    } else {
-        console.log('No shop images to upload.');
-        // อาจจะมีการ validation เพิ่มเติมว่าต้องมีรูปอย่างน้อย 1 รูป
-    }
+       // --- 1. อัปโหลดไฟล์ *ใหม่* (ถ้ามี) ---
+            if (formData.shopImageFiles.length > 0) {
+                console.log(`Uploading ${formData.shopImageFiles.length} new shop images...`);
+                const uploadPromises = formData.shopImageFiles.map(file => {
+                    const fileFormData = new FormData();
+                    fileFormData.append('file', file);
+                    fileFormData.append('folder', 'shop_pictures/');
+                    return uploadFileToGCSAction(fileFormData);
+                });
+                uploadedNewPictureUrls = await Promise.all(uploadPromises);
+                console.log('New shop images uploaded:', uploadedNewPictureUrls);
+            }
+
+            if (formData.licenseDocFile) {
+                console.log("Uploading new license document...");
+                const certFormData = new FormData();
+                certFormData.append('file', formData.licenseDocFile);
+                certFormData.append('folder', 'certificates');
+                uploadedNewCertificateUrl = await uploadFileToGCSAction(certFormData);
+                console.log("New license document uploaded:", uploadedNewCertificateUrl);
+            }
+
+      // --- 2. ลบไฟล์ *เก่า* ที่ถูก Mark ไว้ ---
+      const allUrlsToDelete = [...deletedImageURLs, ...deletedCertImageURLs];
+      if (allUrlsToDelete.length > 0) {
+          console.log("Deleting marked old files:", allUrlsToDelete);
+          await Promise.all(allUrlsToDelete.map(async (url) => {
+              try {
+                  const filePath = extractGCSFilePath(url);
+                  if (filePath) { // Ensure filePath is valid before attempting deletion
+                    await deleteFileFromGCS(filePath);
+                    console.log(`Successfully deleted: ${filePath}`);
+                  } else {
+                    console.warn(`Skipping deletion for invalid path derived from URL: ${url}`);
+                  }
+              } catch (deleteError) {
+                // Log individual deletion errors but continue trying others
+                console.error(`Failed to delete file ${url}:`, deleteError);
+                // Optionally: Collect failed deletions to inform the user
+              }
+          }));
+          console.log("Finished attempting deletions.");
+      }
     
-    // --- 2. Upload License Document (Single) ---
-    if (formData.licenseDocFile ) {
-        try {
-            console.log("Uploading license document via Server Action...");
-            // Create FormData for the license file
-            const uploadFormData = new FormData();
-            uploadFormData.append('file', formData.licenseDocFile);
-            uploadFormData.append('folder', 'certificates');
-            // Optionally add allowedTypes and maxSize
-            // uploadFormData.append('allowedTypes', 'application/pdf,image/jpeg,image/png');
-            // uploadFormData.append('maxSize', (2 * 1024 * 1024).toString());
-            
-            // Call the Server Action with FormData
-            certificateUrl = await uploadFileToGCSAction(uploadFormData);
-            console.log("License document uploaded via Server Action:", certificateUrl);
-        } catch (uploadError) {
-            throw new Error(`License document upload failed: ${uploadError instanceof Error ? uploadError.message : uploadError}`);
-        }
-    }else{
-        certificateUrl = currentCertImageURLs[0];
-    }
-    
-    pictureUrls = [...currentShopImageURLs, ...pictureUrls];
-    
-    // --- 3. Prepare Shop Data (using imported interface) ---
-    const shopData: ShopItemForRequest = {
-        name: formData.shopName,
-        tel: formData.phoneNumber,
-        shopType: formData.shopType,
-        address: formData.address,
-        postalcode: formData.postalcode,
-        region: formData.region,
-        province: formData.province,
-        district: formData.district,
-        desc: formData.description,
-        openTime: formData.openTime,
-        closeTime: formData.closeTime,
-        services: formData.services.map(({ id, ...rest }) => rest),
-        picture: pictureUrls, // Use 'picture' field with array of URLs
-        certificate: certificateUrl, // Use 'certificate' field (optional)
-        // Add other fields from your ShopItemForRequest interface if needed
+      // --- 3. เตรียมข้อมูลสำหรับ API ---
+      // รวม URL รูปภาพ: รูปเดิมที่เหลืออยู่ + รูปใหม่ที่อัปโหลด
+      const finalPictureUrls = [...currentShopImageURLs, ...uploadedNewPictureUrls];
+      // เลือก URL ใบรับรอง: อันใหม่ที่อัปโหลด หรืออันเดิมที่เหลืออยู่
+      const finalCertificateUrl = uploadedNewCertificateUrl ?? currentCertImageURLs[0] ?? undefined;
+
+      const shopData: ShopItemForRequest = {
+          name: formData.shopName,
+          tel: formData.phoneNumber,
+          shopType: formData.shopType,
+          address: formData.address,
+          postalcode: formData.postalcode,
+          region: formData.region,
+          province: formData.province,
+          district: formData.district,
+          desc: formData.description,
+          openTime: formData.openTime,
+          closeTime: formData.closeTime,
+          services: formData.services.map(({ id, ...rest }) => rest), // เอา client-side id ออก
+          picture: finalPictureUrls,
+          certificate: finalCertificateUrl,
       };
 
       const User: User = {
@@ -301,18 +431,6 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
         name: session.user.name,
       };
 
-      // --- 0. Delete Shop Images (Multiple) ---
-      const allDeletedUrls = [...deletedImageURLs, ...deletedCertImageURLs];
-      if (allDeletedUrls.length > 0) {
-        console.log("Deleting old images:", allDeletedUrls);
-        await Promise.all(allDeletedUrls.map(async (url) => {
-          const filePath = extractGCSFilePath(url); // <<< เพิ่มตรงนี้
-          await deleteFileFromGCS(filePath);
-        }));
-        console.log("All deleted successfully.");
-    }
-
-      // --- 4. Prepare Request Data (using imported interface) ---
       const requestData: RequestItemToCreateShop = {
         shop: shopData,
         user: User,
@@ -320,7 +438,7 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
         // status, _id, createdAt,Reason edited will be set by backend
       };
 
-      // --- 5. Call createShopRequest API ---
+      // --- 4. Call createShopRequest API ---
       console.log('Submitting shop creation request:', requestData);
       const result = await editShopRequest(session.user.token, requestData, requestId);
 
@@ -340,7 +458,7 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
       }
     } finally {
         setIsReallySubmitting(false);
-        setOpenConfirmDialog(false);
+        setOpenConfirmDialog(false); 
     }
   };
 
@@ -353,250 +471,403 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
 //           </div>
 //       );
 //   }
+  // --- JSX ---
+    if (isLoadingData || status === 'loading') {
+        return <div className="text-center my-10"><p>Loading...</p></div>; // แสดง Loading
+    }
 
-  // Function to display selected file names for multiple files
-  const displaySelectedFileNames = (files: File[]): string => {
-      if (files.length === 0) return '';
-      if (files.length === 1) return files[0].name;
-      return `${files.length} files selected`;
+    // Check session after loading
+    if (status !== 'authenticated' || !session || !session.user) {
+        return <div className="text-center my-10"><p className="text-red-500">Access Denied.</p></div>;
   }
+
+  // // Function to display selected file names for multiple files
+  // const displaySelectedFileNames = (files: File[]): string => {
+  //     if (files.length === 0) return '';
+  //     if (files.length === 1) return files[0].name;
+  //     return `${files.length} files selected`;
+  // }
 
   return (
     <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md max-w-4xl mx-auto my-8">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-        Edit Shop Request Form
-      </h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+            Edit Shop Request Form
+        </h2>
 
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-          <strong className="font-bold">Error: </strong>
-          <span className="block sm:inline">{error}</span>
-        </div>
-      )}
+        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
 
-      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-
-        {/* Section: Shop Detail (No changes needed here unless interface dictates) */}
-        <div className="border p-4 rounded-md">
-          <h3 className="text-lg font-semibold mb-4 text-gray-800">Shop Detail</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Shop Name */}
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="shopName">
-                Shop Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text" id="shopName" name="shopName"
-                placeholder="Shop Name" required
-                value={formData.shopName} onChange={handleInputChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              />
-            </div>
-            {/* Phone Number */}
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="phoneNumber">
-                Phone number <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="tel" id="phoneNumber" name="phoneNumber"
-                placeholder="Phone number" required
-                value={formData.phoneNumber} onChange={handleInputChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              />
-            </div>
-            {/* Type Shop */}
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="shopType">
-                Type Shop <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="shopType" name="shopType" required
-                value={formData.shopType} onChange={handleInputChange}
-                className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-white"
-              >
-                <option value="" disabled>-- Select Type --</option>
-                <option value="Thai Massage">Thai Massage</option>
-                <option value="Traditional Massage">Traditional Massage</option>
-                <option value="Spa">Spa</option>
-                <option value="Foot Massage">Foot Massage</option>
-                {/* Add more options */}
-              </select>
-            </div>
-            <div></div> {/* Placeholder */}
-          </div>
-        </div>
-
-        {/* Section: Location and Description (No changes needed here unless interface dictates) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Location Group */}
-            <div className="border p-4 rounded-md h-full flex flex-col">
-                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Location</h3>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow">
-                    {/* Address */}
-                    <div className="md:col-span-2">
-                       <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="address">Address <span className="text-red-500">*</span></label>
-                       <input type="text" id="address" name="address" placeholder="Address" required value={formData.address} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
-                    </div>
-                    {/* Postal Code */}
-                     <div>
-                       <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="postalcode">Postal Code <span className="text-red-500">*</span></label>
-                       <input type="text" id="postalcode" name="postalcode" placeholder="Postal Code" required value={formData.postalcode} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
-                    </div>
-                     {/* Region */}
-                     <div>
-                       <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="region">Region <span className="text-red-500">*</span></label>
-                       <input type="text" id="region" name="region" placeholder="Region" required value={formData.region} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
-                    </div>
-                     {/* Province */}
-                     <div>
-                       <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="province">Province <span className="text-red-500">*</span></label>
-                       <input type="text" id="province" name="province" placeholder="Province" required value={formData.province} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
-                    </div>
-                     {/* District */}
-                     <div>
-                       <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="district">District <span className="text-red-500">*</span></label>
-                       <input type="text" id="district" name="district" placeholder="District" required value={formData.district} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
-                    </div>
-                 </div>
-            </div>
-        {/* Section: Open-Close time, Image, License */}
-        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-            {/* Open-Close time */}
-            <div className="border p-4 rounded-md">
-                <h3 className="text-lg font-semibold mb-4 text-gray-800">Operating Hours</h3>
-                 {/* Open Time */}
-                 <div className="mb-3">
-                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="openTime">Open Time <span className="text-red-500">*</span></label>
-                    <input
-                       type="time" id="openTime" name="openTime" required
-                       value={formData.openTime} onChange={handleInputChange}
-                       className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    />
-                 </div>
-                 {/* Close Time */}
-                 <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="closeTime">Close Time <span className="text-red-500">*</span></label>
-                    <input
-                       type="time" id="closeTime" name="closeTime" required
-                       value={formData.closeTime} onChange={handleInputChange}
-                       className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    />
-                 </div>
-            </div>
-         </div>
-
-            </div>
-
-         
-            {/* Description Group */}
-            <div className="border p-4 rounded-md flex flex-col w-full">
-                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Description & Reason</h3>
-                 {/* Description */}
-                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">Shop Description</label>
-                 <textarea
-                    id="description" name="description"
-                    placeholder="Shop description (optional)"
-                    rows={12}
-                    value={formData.description} onChange={handleInputChange}
-                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline resize-none mb-4"
-                 ></textarea>
-            </div>
-
-
-            {/* Your Shop image (Multiple) */}
+            {/* --- Sections: Shop Detail, Location, Description, Operating Hours (เหมือนเดิม) --- */}
+            {/* ... (JSX ของ Sections อื่นๆ) ... */}
              <div className="border p-4 rounded-md">
-                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Shop Images:</h3>
-                 <ManageFileUpload
+                <h3 className="text-lg font-semibold mb-4 text-gray-800">Shop Detail</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Shop Name */}
+                    <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="shopName">
+                        Shop Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                        type="text" id="shopName" name="shopName"
+                        placeholder="Shop Name" required
+                        value={formData.shopName} onChange={handleInputChange}
+                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    />
+                    </div>
+                    {/* Phone Number */}
+                    <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="phoneNumber">
+                        Phone number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                        type="tel" id="phoneNumber" name="phoneNumber"
+                        placeholder="Phone number" required
+                        value={formData.phoneNumber} onChange={handleInputChange}
+                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    />
+                    </div>
+                    {/* Type Shop */}
+                    <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="shopType">
+                        Type Shop <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                        id="shopType" name="shopType" required
+                        value={formData.shopType} onChange={handleInputChange}
+                        className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-white"
+                    >
+                        <option value="" disabled>-- Select Type --</option>
+                        <option value="Thai Massage">Thai Massage</option>
+                        <option value="Traditional Massage">Traditional Massage</option>
+                        <option value="Spa">Spa</option>
+                        <option value="Foot Massage">Foot Massage</option>
+                        {/* Add more options */}
+                    </select>
+                    </div>
+                    <div></div> {/* Placeholder */}
+                </div>
+            </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Location Group */}
+                <div className="border p-4 rounded-md h-full flex flex-col">
+                    <h3 className="text-lg font-semibold mb-4 text-gray-800">Location</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow">
+                        {/* Address */}
+                        <div className="md:col-span-2">
+                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="address">Address <span className="text-red-500">*</span></label>
+                        <input type="text" id="address" name="address" placeholder="Address" required value={formData.address} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                        </div>
+                        {/* Postal Code */}
+                        <div>
+                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="postalcode">Postal Code <span className="text-red-500">*</span></label>
+                        <input type="text" id="postalcode" name="postalcode" placeholder="Postal Code" required value={formData.postalcode} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                        </div>
+                        {/* Region */}
+                        <div>
+                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="region">Region <span className="text-red-500">*</span></label>
+                        <input type="text" id="region" name="region" placeholder="Region" required value={formData.region} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                        </div>
+                        {/* Province */}
+                        <div>
+                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="province">Province <span className="text-red-500">*</span></label>
+                        <input type="text" id="province" name="province" placeholder="Province" required value={formData.province} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                        </div>
+                        {/* District */}
+                        <div>
+                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="district">District <span className="text-red-500">*</span></label>
+                        <input type="text" id="district" name="district" placeholder="District" required value={formData.district} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Description Group */}
+                <div className="border p-4 rounded-md flex flex-col">
+                    <h3 className="text-lg font-semibold mb-4 text-gray-800">Description</h3>
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">Shop Description</label>
+                    <textarea
+                        id="description" name="description"
+                        placeholder="Shop description (optional)"
+                        rows={12}
+                        value={formData.description} onChange={handleInputChange}
+                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline resize-none mb-4"
+                    ></textarea>
+                </div>
+            </div>
+             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                {/* Open-Close time */}
+                <div className="border p-4 rounded-md">
+                    <h3 className="text-lg font-semibold mb-4 text-gray-800">Operating Hours</h3>
+                    <div className="mb-3">
+                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="openTime">Open Time <span className="text-red-500">*</span></label>
+                        <input
+                        type="time" id="openTime" name="openTime" required
+                        value={formData.openTime} onChange={handleInputChange}
+                        className="shadow appearance-none border rounded w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="closeTime">Close Time <span className="text-red-500">*</span></label>
+                        <input
+                        type="time" id="closeTime" name="closeTime" required
+                        value={formData.closeTime} onChange={handleInputChange}
+                        className="shadow appearance-none border rounded w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        />
+                    </div>
+                </div>
+            </div>
+
+
+            {/* --- Section: Shop Images (ปรับปรุง) --- */}
+            <div className="border p-4 rounded-md space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800">Shop Images (1-5 images)</h3>
+
+                {/* 1. Current Images */}
+                {currentShopImageURLs.length > 0 && (
+                    <div className="border border-dashed border-blue-300 p-3 rounded-md">
+                        <p className="text-sm font-medium text-blue-700 mb-2">Current Images:</p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {currentShopImageURLs.map((url) => (
+                                <div key={url} className="relative group border p-1 rounded shadow-sm">
+                                    <Image src={url} alt="Current Shop Image" width={100} height={100} className="object-cover rounded w-full h-24" />
+                                    <button
+                                        type="button"
+                                        onClick={() => handleMarkForDeletion(url, 'shop')}
+                                        className="absolute top-0 right-0 m-1 bg-red-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity"
+                                        aria-label={`Mark ${url} for deletion`}
+                                    >
+                                        {/* Delete Icon */}
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* 2. Newly Selected Images Preview */}
+                {shopImagePreviewUrls.length > 0 && (
+                    <div className="border border-dashed border-green-300 p-3 rounded-md">
+                        <p className="text-sm font-medium text-green-700 mb-2">New Images to Upload:</p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {shopImagePreviewUrls.map((url, index) => (
+                                <div key={index} className="relative group border p-1 rounded shadow-sm">
+                                    <img src={url} alt={`New Shop Preview ${index + 1}`} className="object-cover rounded w-full h-24" />
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveNewShopImage(index)}
+                                        className="absolute top-0 right-0 m-1 bg-red-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity"
+                                        aria-label={`Remove new image ${index + 1}`}
+                                    >
+                                        {/* Remove Icon */}
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                        {/* Clear All New Images Button */}
+                        <button
+                            type="button"
+                            onClick={handleClearAllNewShopImages}
+                            className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+                        >
+                            Clear All New Images
+                        </button>
+                    </div>
+                )}
+
+                {/* 3. Deleted Images (Restore Option) */}
+                {deletedImageURLs.length > 0 && (
+                    <div className="border border-dashed border-red-300 p-3 rounded-md">
+                        <p className="text-sm font-medium text-red-700 mb-2">Images Marked for Deletion:</p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {deletedImageURLs.map((url) => (
+                                <div key={url} className="relative group border p-1 rounded shadow-sm opacity-60">
+                                    <Image src={url} alt="Deleted Shop Image" width={100} height={100} className="object-cover rounded w-full h-24" />
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRestoreDeleted(url, 'shop')}
+                                        className="absolute top-0 right-0 m-1 bg-blue-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity"
+                                        aria-label={`Restore ${url}`}
+                                    >
+                                        {/* Restore Icon (e.g., Undo) */}
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* 4. File Input Button */}
+                <FileUploadInput
                     id="shopImageFiles"
                     name="shopImageFiles"
-                    label="Shop Images (Optional)"
+                    label="Add More Shop Images"
                     accept="image/jpeg, image/png, image/gif"
                     onChange={handleFileChange}
-                    fileName={displaySelectedFileNames(formData.shopImageFiles)}
-                    existingFiles={formData.oldshopImageURL as string[]}
                     multiple={true}
-                    required={true}
-                    onDeletedUrlsChange={setDeletedImageURLs}
-                    onCurrentFilesChange={setCurrentShopImageURLs}
-                    />
-             </div>
+                    // required={currentShopImageURLs.length + formData.shopImageFiles.length === 0} // Required ถ้าไม่มีรูปเลย
+                    // Disable button if max limit reached
+                    // disabled={currentShopImageURLs.length + formData.shopImageFiles.length >= 5}
+                />
+                 {/* Display message if max limit reached */}
+                {(currentShopImageURLs.length + formData.shopImageFiles.length >= 5) &&
+                    <p className="text-sm text-red-500 mt-1">Maximum 5 images reached.</p>
+                }
 
-             {/* ใบรับรอง (Single) */}
-             <div className="border p-4 rounded-md">
-                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Certificate:</h3>
-                 <ManageFileUpload
+            </div>
+
+            {/* --- Section: Certificate (ปรับปรุง) --- */}
+            <div className="border p-4 rounded-md space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800">Certificate</h3>
+
+                {/* 1. Current Certificate */}
+                {currentCertImageURLs.length > 0 && (
+                    <div className="border border-dashed border-blue-300 p-3 rounded-md">
+                        <p className="text-sm font-medium text-blue-700 mb-2">Current Certificate:</p>
+                        <div className="relative group border p-1 rounded shadow-sm inline-block">
+                            {currentCertImageURLs[0].toLowerCase().endsWith('.pdf') ? (
+                                 <a href={currentCertImageURLs[0]} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">View PDF Certificate</a>
+                            ) : (
+                                 <Image src={currentCertImageURLs[0]} alt="Current Certificate" width={150} height={100} className="object-contain rounded h-20 border" />
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => handleMarkForDeletion(currentCertImageURLs[0], 'certificate')}
+                                className="absolute top-0 right-0 m-1 bg-red-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity"
+                                aria-label={`Mark ${currentCertImageURLs[0]} for deletion`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* 2. Newly Selected Certificate Preview */}
+                {licensePreviewUrl && formData.licenseDocFile && (
+                    <div className="border border-dashed border-green-300 p-3 rounded-md">
+                        <p className="text-sm font-medium text-green-700 mb-2">New Certificate to Upload:</p>
+                         <div className="relative group border p-1 rounded shadow-sm inline-block">
+                            {formData.licenseDocFile.type.startsWith('image/') ? (
+                                <img src={licensePreviewUrl} alt="New Certificate Preview" className="object-contain rounded h-20 border"/>
+                            ) : (
+                                <a href={licensePreviewUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate max-w-xs">
+                                    {formData.licenseDocFile.name}
+                                </a>
+                            )}
+                            <button
+                                type="button"
+                                onClick={handleRemoveNewLicense}
+                                className="absolute top-0 right-0 m-1 bg-red-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity"
+                                aria-label="Remove new certificate"
+                            >
+                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                 )}
+
+                {/* 3. Deleted Certificate (Restore Option) */}
+                {deletedCertImageURLs.length > 0 && (
+                    <div className="border border-dashed border-red-300 p-3 rounded-md">
+                        <p className="text-sm font-medium text-red-700 mb-2">Certificate Marked for Deletion:</p>
+                        <div className="relative group border p-1 rounded shadow-sm inline-block opacity-60">
+                            {deletedCertImageURLs[0].toLowerCase().endsWith('.pdf') ? (
+                                 <span className="text-gray-500">PDF Certificate (Marked for deletion)</span>
+                            ) : (
+                                 <Image src={deletedCertImageURLs[0]} alt="Deleted Certificate" width={150} height={100} className="object-contain rounded h-20 border" />
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => handleRestoreDeleted(deletedCertImageURLs[0], 'certificate')}
+                                className="absolute top-0 right-0 m-1 bg-blue-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity"
+                                aria-label={`Restore ${deletedCertImageURLs[0]}`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* 4. File Input Button */}
+                <FileUploadInput
                     id="licenseDocFile"
                     name="licenseDocFile"
-                    label="Certificate (Optional)"
+                    label="Add/Replace Certificate"
                     accept=".pdf, image/jpeg, image/png"
                     onChange={handleFileChange}
-                    fileName={formData.licenseDocFile?.name}
-                    existingFiles={formData.oldCertImageURL as string[]}
-                    required={true}
-                    onDeletedUrlsChange={setDeletedCertImageURLs}
-                    onCurrentFilesChange={setCurrentCertImageURLs}
-                    />
-             </div>
+                    multiple={false}
+                    // required={currentCertImageURLs.length + (formData.licenseDocFile ? 1 : 0) === 0} // Required ถ้าไม่มีเลย
+                    // Disable ถ้ามี Certificate อยู่แล้ว (ทั้งเก่าและใหม่)
+                    // disabled={currentCertImageURLs.length + (formData.licenseDocFile ? 1 : 0) >= 1}
+                />
+                {/* Display message if certificate exists */}
+                {(currentCertImageURLs.length + (formData.licenseDocFile ? 1 : 0) >= 1) &&
+                    <p className="text-sm text-gray-500 mt-1">A certificate is already present. Adding a new one will replace the current one upon submission.</p>
+                }
+            </div>
 
-        {/* Section: Services offered */}
-        <div className="border p-4 rounded-md">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">Services offered:</h3>
-            <ServiceForm onAddService={handleAddService} />
-            <ServiceList services={formData.services} onDeleteService={handleDeleteService} />
-        </div>
 
-        {/* Submit Button */}
-        <div className="text-center pt-4">
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded focus:outline-none focus:shadow-outline ${
-              isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            {isSubmitting ? 'Submitting Request...' : 'Submit Shop Request'}
-          </button>
-        </div>
+            {/* --- Section: Services offered (เหมือนเดิม) --- */}
+            <div className="border p-4 rounded-md">
+                <h3 className="text-lg font-semibold mb-4 text-gray-800">Services offered:</h3>
+                <ServiceForm onAddService={handleAddService} />
+                <ServiceList services={formData.services} onDeleteService={handleDeleteService} />
+            </div>
 
-      </form>
-      
-      <Dialog disableScrollLock open={openConfirmDialog} onClose={() => setOpenConfirmDialog(false)}
-  PaperProps={{
-    className: 'w-full max-w-lg rounded-lg'
-  }}
->
-  <DialogTitle>Confirm Edit</DialogTitle>
-  <DialogContent>
-    <DialogContentText>
-      Are you sure you want to submit the changes to your shop request?
-    </DialogContentText>
-  </DialogContent>
-  <DialogActions>
-    <Button
-      onClick={() => setOpenConfirmDialog(false)}
-      disabled={isReallySubmitting}
-    >
-      Back
-    </Button>
-    <Button
-      variant="contained"
-      color="primary"
-      onClick={handleConfirmEdit}
-      disabled={isReallySubmitting}
-      startIcon={isReallySubmitting ? (
-        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-        </svg>
-      ) : null}
-    >
-      {isReallySubmitting ? 'Submitting...' : 'Confirm'}
-    </Button>
-  </DialogActions>
-</Dialog>
+            {/* --- Submit Button --- */}
+            <div className="text-center pt-4">
+                <button
+                    type="submit"
+                    disabled={isReallySubmitting} // ใช้ isReallySubmitting
+                    className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded focus:outline-none focus:shadow-outline ${
+                    isReallySubmitting ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                >
+                    {isReallySubmitting ? 'Submitting...' : 'Submit Changes'}
+                </button>
+            </div>
+        </form>
 
+        <div className="py-6">
+                {error && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                        <strong className="font-bold">Error:</strong>
+                        {/* --- แก้ไขเงื่อนไขตรงนี้ --- */}
+                        {typeof error === 'string' && error.startsWith('Validation failed:') ? (
+                            <ul className="list-disc list-inside mt-1">
+                                {/* --- แก้ไขความยาว substring ตรงนี้ --- */}
+                                {error.substring('Validation failed:'.length)
+                                      .split(/\s*,\s*/) // ใช้ Regex เหมือนเดิม
+                                      .filter(msg => msg.trim() !== '') // กรองค่าว่าง
+                                      .map((errMsg, index) => (
+                                          <li key={index}>{errMsg.replace(/^shop\./, '').trim()}</li>
+                                      ))
+                                }
+                            </ul>
+                        ) : typeof error === 'string' ? (
+                            <span className="block sm:inline ml-1">{error}</span>
+                        ) : null }
+                    </div>
+                )}
+            </div>
+          
+        {/* --- Confirmation Dialog (เหมือนเดิม) --- */}
+        <Dialog disableScrollLock open={openConfirmDialog} onClose={() => setOpenConfirmDialog(false)} /* ... */ >
+            <DialogTitle>Confirm Edit</DialogTitle>
+            <DialogContent>
+                <DialogContentText>
+                Are you sure you want to submit the changes to your shop request?
+                </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={() => setOpenConfirmDialog(false)} disabled={isReallySubmitting}>Back</Button>
+                <Button variant="contained" color="primary" onClick={handleConfirmEdit} disabled={isReallySubmitting} /* ... */ >
+                {isReallySubmitting ? 'Submitting...' : 'Confirm'}
+                </Button>
+            </DialogActions>
+        </Dialog>
     </div>
-  );
+);
 };
 
 export default EditShopRequestForm;

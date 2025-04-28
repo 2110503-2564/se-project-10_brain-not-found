@@ -12,7 +12,7 @@ export default async function addShopForAdminPage() {
       <main className="bg-slate-500 m-5 p-5 rounded-lg">
         <div className="space-y-5">
 
-          {session.user.role === 'shopOwner' && <FileUploadInputTest />}
+          {/* {session.user.role === 'shopOwner' && <FileUploadInputTest />} */}
           {session.user.role === 'shopOwner' && <CreateShopRequestForm />}
         </div>
       </main>
