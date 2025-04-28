@@ -341,6 +341,185 @@ test("Authorize User delete comment and rating", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Sign-In" })).toBeVisible();
 });
 
+
+test('Customer can edit their own review and rating SAVE', async ({ page }) => {
+  await page.getByRole("link", { name: "Sign-In" }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Credentials" })
+  ).toBeVisible();
+
+  // Customer enters email and password
+  await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
+  await page.fill('input[name="password"]', "12345678");
+
+  await page.getByRole("button", { name: "Sign in with Credentials" }).click();
+  // Expect to see Sign-Out button after login
+
+  await page.getByRole("link", { name: "Massage" }).click();
+  // Go to the shop page (assuming we navigate to a specific shop page)
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
+
+  // มี review ขอตัวเองจริงๆ
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  await page.getByText("TeeAsCustomer3");
+  const errorText = page.getByText("You have already submitted a review.");
+
+  // เลื่อนลงไปหา element ถ้ายังไม่อยู่ในจอ
+  await errorText.scrollIntoViewIfNeeded();
+
+  // ค่อย expect ว่าเห็นแล้ว
+  await expect(errorText).toBeVisible();
+  
+  const moreButton = page.getByLabel('More');
+
+  // เลื่อนขึ้นไปหา More ก่อน ถ้ายังไม่อยู่ในจอ
+  await moreButton.scrollIntoViewIfNeeded();
+
+  // คลิกปุ่ม More
+  await moreButton.click();
+
+
+  // 2. รอเมนูแสดงผล (จริง ๆ กดแล้วเมนูมัน popup เลย)
+  const editButton = page.getByRole('menuitem', { name: 'Edit' });
+  const deleteButton = page.getByRole('menuitem', { name: 'Delete' });
+
+  await expect(editButton).toBeVisible();
+  await expect(deleteButton).toBeVisible();
+
+  // 3. กด Edit
+  await editButton.click();
+
+  await page.getByLabel('Dialog Edit Review').isVisible();
+
+  // Rating
+  await page.getByLabel('Rating in Edit Review').isVisible();
+  // (แล้วต่อด้วยกรอกข้อมูลใหม่ + submit ตามเทสต์ที่คุณต้องการ)
+  const starLabelLocator = page.locator(
+    'input[type="radio"][value="3"] + label'
+  );
+  await expect(starLabelLocator).toBeVisible();
+  await starLabelLocator.click();
+
+  // Title
+  await page.getByLabel('Title in Edit Review').isVisible();
+  // ไปหา input ชื่อ "Title" แล้วใส่ข้อความใหม่
+  await page.getByLabel('Title').fill('New Edited Title');
+  await expect(page.getByLabel('Title')).toHaveValue('New Edited Title');
+  // Comment
+  await page.getByLabel('Comment in Edit Review').isVisible();
+  // ไปหา input ชื่อ "Comment" แล้วใส่ข้อความใหม่
+  await page.getByLabel('Comment').fill('New edited comment content.');
+  await expect(page.getByLabel('Comment')).toHaveValue('New edited comment content.');
+  // Save
+  await page.getByLabel('Save in Edit').isVisible();
+  await page.getByLabel('Save in Edit').click();
+
+  // เปลี่ยน comment จริงนะ
+  await expect(
+    page.getByText("New Edited Title")
+  ).toBeVisible();
+
+  await expect(
+    page.getByText("New edited comment content.")
+  ).toBeVisible();
+
+  await errorText.scrollIntoViewIfNeeded();
+  // ค่อย expect ว่าเห็นแล้ว
+  await expect(errorText).toBeVisible();
+    
+});
+
+test('Customer can edit their own review and rating CANCEL', async ({ page }) => {
+  await page.getByRole("link", { name: "Sign-In" }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Credentials" })
+  ).toBeVisible();
+
+  // Customer enters email and password
+  await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
+  await page.fill('input[name="password"]', "12345678");
+
+  await page.getByRole("button", { name: "Sign in with Credentials" }).click();
+  // Expect to see Sign-Out button after login
+
+  await page.getByRole("link", { name: "Massage" }).click();
+  // Go to the shop page (assuming we navigate to a specific shop page)
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
+
+  // มี review ขอตัวเองจริงๆ
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  await page.getByText("TeeAsCustomer3");
+  const errorText = page.getByText("You have already submitted a review.");
+  
+  // มีหลังจาก Edit SAVE
+  await page.getByText("New Edited Title").scrollIntoViewIfNeeded();
+  await expect(page.getByText("New Edited Title")).toBeVisible();
+
+  await page.getByText("New edited comment content").scrollIntoViewIfNeeded();
+  await expect(page.getByText("New edited comment content")).toBeVisible();
+
+  
+  // เลื่อนลงไปหา element ถ้ายังไม่อยู่ในจอ
+  await errorText.scrollIntoViewIfNeeded();
+
+  // ค่อย expect ว่าเห็นแล้ว
+  await expect(errorText).toBeVisible();
+  
+  const moreButton = page.getByLabel('More');
+
+  // เลื่อนขึ้นไปหา More ก่อน ถ้ายังไม่อยู่ในจอ
+  await moreButton.scrollIntoViewIfNeeded();
+
+  // คลิกปุ่ม More
+  await moreButton.click();
+
+
+  // 2. รอเมนูแสดงผล (จริง ๆ กดแล้วเมนูมัน popup เลย)
+  const editButton = page.getByRole('menuitem', { name: 'Edit' });
+  const deleteButton = page.getByRole('menuitem', { name: 'Delete' });
+
+  await expect(editButton).toBeVisible();
+  await expect(deleteButton).toBeVisible();
+
+  // 3. กด Edit
+  await editButton.click();
+
+  await page.getByLabel('Dialog Edit Review').isVisible();
+
+  // Rating
+  await page.getByLabel('Rating in Edit Review').isVisible();
+  // (แล้วต่อด้วยกรอกข้อมูลใหม่ + submit ตามเทสต์ที่คุณต้องการ)
+  const starLabelLocator = page.locator(
+    'input[type="radio"][value="3"] + label'
+  );
+  await expect(starLabelLocator).toBeVisible();
+  await starLabelLocator.click();
+
+  // Title
+  await page.getByLabel('Title in Edit Review').isVisible();
+  // ไปหา input ชื่อ "Title" แล้วใส่ข้อความใหม่
+  await page.getByLabel('Title').fill('New Edited Title but Cancel');
+  await expect(page.getByLabel('Title')).toHaveValue('New Edited Title but Cancel');
+  // Comment
+  await page.getByLabel('Comment in Edit Review').isVisible();
+  // ไปหา input ชื่อ "Comment" แล้วใส่ข้อความใหม่
+  await page.getByLabel('Comment').fill('New edited comment content but Cancel');
+  await expect(page.getByLabel('Comment')).toHaveValue('New edited comment content but Cancel');
+  // Save
+  await page.getByLabel('Cancel in Edit').isVisible();
+  await page.getByLabel('Cancel in Edit').click();
+
+  // ไม่เปลี่ยน comment จริงนะ
+  await expect(page.getByText("New Edited Title")).toBeVisible();
+
+  await expect(page.getByText("New edited comment content.")).toBeVisible();
+
+  await errorText.scrollIntoViewIfNeeded();
+  // ค่อย expect ว่าเห็นแล้ว
+  await expect(errorText).toBeVisible();
+    
+});
+
 /*
 
 Test Case No.	Test Name
@@ -355,8 +534,9 @@ ryu
 
 
 Tee
-7	User can edit their own review and rating
-8	User cannot edit others' reviews and ratings
+7.1	Customer can edit their own review and rating (save) ✅
+7.2 7	Customer can edit their own review and rating (Cancel) ✅
+8	Customer cannot edit others' reviews and ratings
 9	Guest cannot edit any review and rating
 10	ShopOwner cannot edit any review and rating
 11	Admin cannot edit any review and rating
@@ -366,6 +546,8 @@ Tee
 14	Guest cannot delete any review and rating
 15	Admin can delete any review and rating
 16	ShopOwner cannot delete reviews and ratings
+
+
 
 
 */
