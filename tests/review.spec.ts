@@ -1,59 +1,62 @@
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
+import exp from "constants";
 test.beforeEach(async ({ page }) => {
+  await page.goto("http://localhost:3000/");
 
-  await page.goto('http://localhost:3000/');
-
-
-  await page.waitForLoadState('networkidle');
-
-  
+  await page.waitForLoadState("networkidle");
 });
 
 // 1) User can create a review and rating
-test('Customer submits a valid review to a shop', async ({ page }) => {
+test("Customer submits a valid review to a shop", async ({ page }) => {
   // Given the customer is logged in
-  await page.getByRole('link', { name: 'Sign-In' }).click();
-  await expect(page.getByRole('button', { name: 'Sign in with Credentials' })).toBeVisible();
-  
-  // Customer enters email and password
-  await page.fill('input[name="email"]', 'TeeCustomer3@gmail.com');
-  await page.fill('input[name="password"]', '12345678');
+  await page.getByRole("link", { name: "Sign-In" }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Credentials" })
+  ).toBeVisible();
 
-  await page.getByRole('button', { name: 'Sign in with Credentials' }).click();
+  // Customer enters email and password
+  await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
+  await page.fill('input[name="password"]', "12345678");
+
+  await page.getByRole("button", { name: "Sign in with Credentials" }).click();
   // Expect to see Sign-Out button after login
 
-  await page.getByRole('link', { name: 'Massage' }).click();
+  await page.getByRole("link", { name: "Massage" }).click();
   // Go to the shop page (assuming we navigate to a specific shop page)
-  await page.goto('http:localhost:3000/shops/67df82e11869b1292796dce8'); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
 
-  await page.waitForLoadState('networkidle'); // รอให้ network 
-  await page.waitForSelector('text=Write a Review', { state: 'visible' });
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  await page.waitForSelector("text=Write a Review", { state: "visible" });
+  await expect(page.getByText('No reviews found')).not.toBeVisible();
 
-  await expect(page.getByText('You have already submitted a review.')).not.toBeVisible();
+  await expect(  page.getByText("You have already submitted a review.")).not.toBeVisible();
 
-  await expect(page.getByText('Write a Review')).toBeVisible();
+  await expect(page.getByText("Write a Review")).toBeVisible();
 
-  const starLabelLocator = page.locator('input[type="radio"][value="4"] + label');
+  const starLabelLocator = page.locator(
+    'input[type="radio"][value="4"] + label'
+  );
   await expect(starLabelLocator).toBeVisible();
   await starLabelLocator.click();
 
-  const titleInput = page.getByLabel('Title');
-  const commentInput = page.getByLabel('Comment');
+  const titleInput = page.getByLabel("Title");
+  const commentInput = page.getByLabel("Comment");
 
   await expect(titleInput).toBeVisible();
   await expect(commentInput).toBeVisible();
 
- 
-  await titleInput.fill('Title of massage');
-  await commentInput.fill('So good na');
+  await titleInput.fill("Title of massage");
+  await commentInput.fill("So good na");
 
   // Submit the review and handle the alert
   let alertMessage = null;
-  page.on('dialog', async (dialog) => {
+  page.on("dialog", async (dialog) => {
     console.log(`Dialog message: ${dialog.message()}`); // เพิ่ม log ดูข้อความ dialog
     // ทำให้ยืดหยุ่นมากขึ้น เผื่อข้อความไม่ตรงเป๊ะ
-    if (dialog.message().toLowerCase().includes('review submitted successfully')) {
+    if (
+      dialog.message().toLowerCase().includes("review submitted successfully")
+    ) {
       alertMessage = dialog.message();
       await dialog.accept();
     } else {
@@ -64,179 +67,279 @@ test('Customer submits a valid review to a shop', async ({ page }) => {
   });
 
   // *** คลิกปุ่ม Submit *** (ต้องมีปุ่ม Submit จริงๆ)
-  await page.getByRole('button', { name: 'Submit Review' }).click(); // หรือชื่อปุ่มอื่นๆ ที่ถูกต้อง
+  await page.getByRole("button", { name: "Submit Review" }).click(); // หรือชื่อปุ่มอื่นๆ ที่ถูกต้อง
 
   // Check the alert message
   // *** เพิ่มการรอให้ dialog ทำงานเสร็จ ***
   await page.waitForTimeout(1000); // รอสักครู่เพื่อให้ event handler ทำงาน (อาจปรับเวลา)
-  expect(alertMessage).toContain('Review submitted successfully!'); // ใช้ toContain เผื่อมีข้อความอื่นปน
+  expect(alertMessage).toContain("Review submitted successfully!"); // ใช้ toContain เผื่อมีข้อความอื่นปน
 
-  await expect(page.getByText('You have already submitted a review.')).toBeVisible(); ;
+  await expect(
+    page.getByText("You have already submitted a review.")
+  ).toBeVisible();
 });
 
 
-test('Participant read comment and rating', async ({ page }) => {
- //////// guest ////////////////////////////////////
-  await page.getByRole('link', { name: 'Massage' }).click();
-  await page.goto('http://localhost:3000/shops/680e1b70a409a81e8bad7cad');/////////////// Not found
-  await expect(page.getByRole('heading', { name: 'Reviews'})).toBeVisible();
+// 2) Guest create review
+test("Guest can't create review", async ({ page }) => {
+
+
+  await page.getByRole("link", { name: "Massage" }).click();
+  // Go to the shop page (assuming we navigate to a specific shop page)
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
+
+  await page.waitForLoadState("networkidle"); // รอให้ network
+
+  await expect(
+    page.getByText("You need to be logged in to make a booking.")
+  ).toBeVisible();
+  await expect(page.getByText('No reviews found')).not.toBeVisible();
+
+  await expect(page.getByText('Title of massage')).toBeVisible();
+  await expect(page.getByText('So good na')).toBeVisible(); 
+
+  await expect(page.getByText("Write a Review")).not.toBeVisible();
+});
+
+
+///3.)
+test("Guest can read comment and rating", async ({ page }) => {
+  //////// guest ////////////////////////////////////
+  await page.getByRole("link", { name: "Massage" }).click();
+  // Go to the shop page (assuming we navigate to a specific shop page)
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
+
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  await expect(page.getByText('No reviews found')).not.toBeVisible();
+
+  await expect(page.getByRole('heading', { name: 'Reviews' })).toBeVisible(); 
+  await expect(page.getByText('Title of massage')).toBeVisible();
+  await expect(page.getByText('So good na')).toBeVisible();     
+  await expect(page.getByText("Write a Review")).not.toBeVisible();
+
+  
+});
+test("Customer can read comment and rating", async ({ page }) => {
+  await page.getByRole("link", { name: "Sign-In" }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Credentials" })
+  ).toBeVisible();
+
+  // Customer enters email and password
+  await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
+  await page.fill('input[name="password"]', "12345678");
+
+  await page.getByRole("button", { name: "Sign in with Credentials" }).click();
+  // Expect to see Sign-Out button after login
+
+  await page.getByRole("link", { name: "Massage" }).click();
+  // Go to the shop page (assuming we navigate to a specific shop page)
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
+
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  await expect(page.getByRole('heading', { name: 'Reviews' })).toBeVisible(); 
+  await expect(page.getByText('No reviews found')).not.toBeVisible();
+
+  await expect(page.getByText('Title of massage')).toBeVisible();
+  await expect(page.getByText('So good na')).toBeVisible();     
+  await expect(page.getByText("Write a Review")).not.toBeVisible();
+
+});
+test("Admin can read comment and rating", async ({ page }) => {
+  await page.getByRole("link", { name: "Sign-In" }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Credentials" })
+  ).toBeVisible();
+
+  // Customer enters email and password
+  await page.fill('input[name="email"]', "adminTee@gmail.com");
+  await page.fill('input[name="password"]', "12345678");
+
+  await page.getByRole("button", { name: "Sign in with Credentials" }).click();
+  // Expect to see Sign-Out button after login
+
+  await page.getByRole("link", { name: "Massage" }).click();
+  // Go to the shop page (assuming we navigate to a specific shop page)
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
+
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  await expect(page.getByRole('heading', { name: 'Reviews' })).toBeVisible(); 
+  await expect(page.getByText('No reviews found')).not.toBeVisible();
+
+  await expect(page.getByText('Title of massage')).toBeVisible();
+  await expect(page.getByText('So good na')).toBeVisible();     
+  await expect(page.getByText("Write a Review")).not.toBeVisible();
+
+});
+
+test("Customer can read comment and rating No Review", async ({ page }) => {
+  await page.getByRole("link", { name: "Sign-In" }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Credentials" })
+  ).toBeVisible();
+
+  // Customer enters email and password
+  await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
+  await page.fill('input[name="password"]', "12345678");
+
+  await page.getByRole("button", { name: "Sign in with Credentials" }).click();
+  // Expect to see Sign-Out button after login
+
+  await page.getByRole("link", { name: "Massage" }).click();
+  // Go to the shop page (assuming we navigate to a specific shop page)
+  await page.goto("http://localhost:3000/shops/680e1b70a409a81e8bad7cad"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
+
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  await expect(page.getByRole('heading', { name: 'Reviews' })).toBeVisible(); 
   await expect(page.getByText('No reviews found')).toBeVisible();
 
-  await page.getByRole('link', { name: 'Massage' }).click();
-  await page.goto('http://localhost:3000/shops/67c442eb099d8d3ee5b5d8b5');///////////////// found
-  await expect(page.getByRole('heading', { name: 'Reviews'})).toBeVisible();
-  await expect(page.getByLabel('Title')).toBeVisible();
-  await expect(page.getByLabel('Comment')).toBeVisible();
+});
+test("Guest can read comment and rating No Review", async ({ page }) => {
+  
+  await page.getByRole("link", { name: "Massage" }).click();
+  // Go to the shop page (assuming we navigate to a specific shop page)
+  await page.goto("http://localhost:3000/shops/680e1b70a409a81e8bad7cad"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
 
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  await expect(page.getByRole('heading', { name: 'Reviews' })).toBeVisible(); 
+  await expect(page.getByText('No reviews found')).toBeVisible();
 
-  ///////// customer ////////////////////////////////////
+});
+test("Admin can read comment and rating No Review", async ({ page }) => {
+  await page.getByRole("link", { name: "Sign-In" }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Credentials" })
+  ).toBeVisible();
 
-  // Given the customer is logged in
-  await page.getByRole('link', { name: 'Sign-In' }).click();
-    await expect(page.getByRole('button', { name: 'Sign in with Credentials'})).toBeVisible();
-  await page.fill('input[name="email"]', 'TeeCustomer3@gmail.com');
-  await page.fill('input[name="password"]', '12345678');
+  // Customer enters email and password
+  await page.fill('input[name="email"]', "adminTee@gmail.com");
+  await page.fill('input[name="password"]', "12345678");
 
+  await page.getByRole("button", { name: "Sign in with Credentials" }).click();
+  // Expect to see Sign-Out button after login
 
- await expect(page.getByRole('button', { name: 'Sign-Out' })).toBeVisible();
+  await page.getByRole("link", { name: "Massage" }).click();
+  // Go to the shop page (assuming we navigate to a specific shop page)
+  await page.goto("http://localhost:3000/shops/680e1b70a409a81e8bad7cad"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
 
- await page.getByRole('link', { name: 'Massage' }).click();
- await page.goto('http://localhost:3000/shops/67c442eb099d8d3ee5b5d8b5')
- await expect(page.getByRole('heading', { name: 'Reviews'})).toBeVisible();
- await expect(page.getByLabel('Title')).toBeVisible();
- await expect(page.getByLabel('Comment')).toBeVisible();
- 
-///// logout
- await page.getByRole('button', { name: 'Sign-Out' }).click();
- await expect(page.getByRole('heading', { name: 'Signout'})).toBeVisible();
- await page.getByRole('button', { name: 'Sign out' }).click();
- await expect(page.getByRole('button', { name: 'Sign-In' })).toBeVisible();
-
-
- ////////// admin ////////////////////////
- // Given the admin is logged in
- await page.getByRole('button', { name: 'Sign-In' }).click();
- await expect(page.getByRole('button', { name: 'Sign in with Credentials'})).toBeVisible();
- await page.fill('input[name="email"]', 'adminTee@gmail.com');
- await page.fill('input[name="password"]', '12345678');
- await page.click('button[type="submit"]');
-
-await expect(page.getByRole('button', { name: 'Sign-Out' })).toBeVisible();
-await page.getByRole('link', { name: 'Massage' }).click();
-await page.goto('http://localhost:3000/shops/67c442eb099d8d3ee5b5d8b5')
-await expect(page.getByRole('heading', { name: 'Reviews'})).toBeVisible();
-await expect(page.getByLabel('Title')).toBeVisible();
-await expect(page.getByLabel('Comment')).toBeVisible();
-
-///// logout
-await page.getByRole('button', { name: 'Sign-Out' }).click();
-await expect(page.getByRole('heading', { name: 'Signout'})).toBeVisible();
-await page.getByRole('button', { name: 'Sign out' }).click();
-await expect(page.getByRole('button', { name: 'Sign-In' })).toBeVisible();
-
-//////////////////////////////////
-
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  await expect(page.getByRole('heading', { name: 'Reviews' })).toBeVisible(); 
+  await expect(page.getByText('No reviews found')).toBeVisible();
 
 });
 
-test('Customer edit comment and rating', async ({ page }) => {
-  await page.getByRole('link', { name: 'Sign-In' }).click();
-    await expect(page.getByRole('button', { name: 'Sign in with Credentials'})).toBeVisible();
-  await page.fill('input[name="email"]', 'TeeCustomer3@gmail.com');
-  await page.fill('input[name="password"]', '12345678');
 
 
- await expect(page.getByRole('button', { name: 'Sign-Out' })).toBeVisible();
+test("Customer edit comment and rating", async ({ page }) => {
+  await page.getByRole("link", { name: "Sign-In" }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Credentials" })
+  ).toBeVisible();
+  await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
+  await page.fill('input[name="password"]', "12345678");
 
- await page.getByRole('link', { name: 'Massage' }).click();
- await page.goto('http://localhost:3000/shops/67df82e11869b1292796dce8');///////////////// found
- await expect(page.getByRole('heading', { name: 'Reviews'})).toBeVisible();
- await expect(page.getByLabel('Title')).toBeVisible();
- await expect(page.getByLabel('Comment')).toBeVisible();
- await expect(page.getByText('You have already submitted a review.')).toBeVisible();
- await page.getByRole('menuitem', { name: 'Edit' }).click();
- await expect(page.getByText('Edit Review')).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign-Out" })).toBeVisible();
 
-// กดดาว 4 ดาว
-await page.getByRole('radio', { name: '4 Stars' }).click();
+  await page.getByRole("link", { name: "Massage" }).click();
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); ///////////////// found
+  await expect(page.getByRole("heading", { name: "Reviews" })).toBeVisible();
+  await expect(page.getByLabel("Title")).toBeVisible();
+  await expect(page.getByLabel("Comment")).toBeVisible();
+  await expect(
+    page.getByText("You have already submitted a review.")
+  ).toBeVisible();
+  await page.getByRole("menuitem", { name: "Edit" }).click();
+  await expect(page.getByText("Edit Review")).toBeVisible();
 
-// เช็กว่าเลือกดาว 4 จริง ๆ
-await expect(
-  page.getByRole('radio', { name: '4 Stars' })
-).toHaveAttribute('aria-checked', 'true');
+  // กดดาว 4 ดาว
+  await page.getByRole("radio", { name: "4 Stars" }).click();
 
- await page.fill('label[name="Title"]', 'Title of massage');
+  // เช็กว่าเลือกดาว 4 จริง ๆ
+  await expect(page.getByRole("radio", { name: "4 Stars" })).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
 
- await page.fill('label[name="Comment"]', 'So good na');
+  await page.fill('label[name="Title"]', "Title of massage");
 
- await page.getByRole('button', { name: 'SAVE' }).click();
+  await page.fill('label[name="Comment"]', "So good na");
 
- await expect(page.getByLabel('Title')).toHaveValue('Title of massage');
- await expect(page.getByLabel('Comment')).toHaveValue('So good na');
+  await page.getByRole("button", { name: "SAVE" }).click();
 
- ///// logout
-await page.getByRole('button', { name: 'Sign-Out' }).click();
-await expect(page.getByRole('heading', { name: 'Signout'})).toBeVisible();
-await page.getByRole('button', { name: 'Sign out' }).click();
-await expect(page.getByRole('button', { name: 'Sign-In' })).toBeVisible();
+  await expect(page.getByLabel("Title")).toHaveValue("Title of massage");
+  await expect(page.getByLabel("Comment")).toHaveValue("So good na");
 
+  ///// logout
+  await page.getByRole("button", { name: "Sign-Out" }).click();
+  await expect(page.getByRole("heading", { name: "Signout" })).toBeVisible();
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page.getByRole("button", { name: "Sign-In" })).toBeVisible();
 });
 
-test('Authorize User delete comment and rating', async ({ page }) => {
-//////////// Customer //////////////////////////// (customer เห็นแค่ของตัวเอง ยังไม่ทำ) 
-await page.getByRole('button', { name: 'Sign-In' }).click();
-await expect(page.getByRole('button', { name: 'Sign in with Credentials'})).toBeVisible();
-await page.fill('input[name="email"]', 'TeeCustomer3@gmail.com');
-await page.fill('input[name="password"]', '12345678');
-await page.click('button[type="submit"]');
-await expect(page.getByRole('button', { name: 'Sign-Out' })).toBeVisible();
+test("Authorize User delete comment and rating", async ({ page }) => {
+  //////////// Customer //////////////////////////// (customer เห็นแค่ของตัวเอง ยังไม่ทำ)
+  await page.getByRole("button", { name: "Sign-In" }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Credentials" })
+  ).toBeVisible();
+  await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
+  await page.fill('input[name="password"]', "12345678");
+  await page.click('button[type="submit"]');
+  await expect(page.getByRole("button", { name: "Sign-Out" })).toBeVisible();
 
-await page.getByRole('link', { name: 'Massage' }).click();
-await page.goto('http://localhost:3000/shops/67df82e11869b1292796dce8');///////////////// found
-await expect(page.getByRole('heading', { name: 'Reviews'})).toBeVisible();
-await expect(page.getByLabel('Title')).toBeVisible();
-await expect(page.getByLabel('Comment')).toBeVisible();
-await expect(page.getByText('You have already submitted a review.')).toBeVisible();
-await page.getByRole('menuitem', { name: 'Delete' }).click();
-await expect(page.getByText('Delete this review?')).toBeVisible();
-await page.getByRole('button', { name: 'DELETE' }).click();
-await expect(page.getByText('You have already submitted a review.')).not.toBeVisible();
+  await page.getByRole("link", { name: "Massage" }).click();
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); ///////////////// found
+  await expect(page.getByRole("heading", { name: "Reviews" })).toBeVisible();
+  await expect(page.getByLabel("Title")).toBeVisible();
+  await expect(page.getByLabel("Comment")).toBeVisible();
+  await expect(
+    page.getByText("You have already submitted a review.")
+  ).toBeVisible();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
+  await expect(page.getByText("Delete this review?")).toBeVisible();
+  await page.getByRole("button", { name: "DELETE" }).click();
+  await expect(
+    page.getByText("You have already submitted a review.")
+  ).not.toBeVisible();
 
- ///// logout
- await page.getByRole('button', { name: 'Sign-Out' }).click();
- await expect(page.getByRole('heading', { name: 'Signout'})).toBeVisible();
- await page.getByRole('button', { name: 'Sign out' }).click();
- await expect(page.getByRole('button', { name: 'Sign-In' })).toBeVisible(); 
-///////////////////////
+  ///// logout
+  await page.getByRole("button", { name: "Sign-Out" }).click();
+  await expect(page.getByRole("heading", { name: "Signout" })).toBeVisible();
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page.getByRole("button", { name: "Sign-In" })).toBeVisible();
+  ///////////////////////
 
-//////////// Admin //////////////////////////// (admin เห็นหมด ยังไม่ทำ) 
-await page.getByRole('button', { name: 'Sign-In' }).click();
-await expect(page.getByRole('button', { name: 'Sign in with Credentials'})).toBeVisible();
-await page.fill('input[name="email"]', 'TeeCustomer3@gmail.com');
-await page.fill('input[name="password"]', '12345678');
-await page.click('button[type="submit"]');
-await expect(page.getByRole('button', { name: 'Sign-Out' })).toBeVisible();
+  //////////// Admin //////////////////////////// (admin เห็นหมด ยังไม่ทำ)
+  await page.getByRole("button", { name: "Sign-In" }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Credentials" })
+  ).toBeVisible();
+  await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
+  await page.fill('input[name="password"]', "12345678");
+  await page.click('button[type="submit"]');
+  await expect(page.getByRole("button", { name: "Sign-Out" })).toBeVisible();
 
-await page.getByRole('link', { name: 'Massage' }).click();
-await page.goto('http://localhost:3000/shops/67df82e11869b1292796dce8');///////////////// found
-await expect(page.getByRole('heading', { name: 'Reviews'})).toBeVisible();
-await expect(page.getByLabel('Title')).toBeVisible();
-await expect(page.getByLabel('Comment')).toBeVisible();
-await expect(page.getByText('You have already submitted a review.')).toBeVisible();
-await page.getByRole('menuitem', { name: 'Delete' }).click();
-await expect(page.getByText('Delete this review?')).toBeVisible();
-await page.getByRole('button', { name: 'DELETE' }).click();
-await expect(page.getByText('You have already submitted a review.')).not.toBeVisible();
+  await page.getByRole("link", { name: "Massage" }).click();
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); ///////////////// found
+  await expect(page.getByRole("heading", { name: "Reviews" })).toBeVisible();
+  await expect(page.getByLabel("Title")).toBeVisible();
+  await expect(page.getByLabel("Comment")).toBeVisible();
+  await expect(
+    page.getByText("You have already submitted a review.")
+  ).toBeVisible();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
+  await expect(page.getByText("Delete this review?")).toBeVisible();
+  await page.getByRole("button", { name: "DELETE" }).click();
+  await expect(
+    page.getByText("You have already submitted a review.")
+  ).not.toBeVisible();
 
- ///// logout
- await page.getByRole('button', { name: 'Sign-Out' }).click();
- await expect(page.getByRole('heading', { name: 'Signout'})).toBeVisible();
- await page.getByRole('button', { name: 'Sign out' }).click();
- await expect(page.getByRole('button', { name: 'Sign-In' })).toBeVisible(); 
-
- 
+  ///// logout
+  await page.getByRole("button", { name: "Sign-Out" }).click();
+  await expect(page.getByRole("heading", { name: "Signout" })).toBeVisible();
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page.getByRole("button", { name: "Sign-In" })).toBeVisible();
 });
-
 
 /*
 
@@ -266,5 +369,3 @@ Tee
 
 
 */
-
-
