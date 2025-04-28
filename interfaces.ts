@@ -1,4 +1,4 @@
- interface Review { // subject to changes
+ interface Review { 
   _id: string,
   header: string,
   comment: string,
@@ -11,6 +11,30 @@
   },
   createdAt: Date,
   edited?: Date
+}
+
+interface RequestData { 
+  _id: string,
+  user: {
+    _id: string,
+    name: string,
+    email?: string,
+    tel?: string
+  },
+  createdAt: Date,
+  shop: ShopItem,
+  status: string,
+  requestType: string,
+  edited?: Date,
+  reason?: string
+}
+
+interface ServiceData {
+  name: string,
+  desc: string,
+  duration: string,
+  price: string,
+  id: string
 }
 
 interface SingleShopItem {
@@ -53,9 +77,12 @@ interface SingleShopItem {
     reviewCount?: number,
     averageRating?: number,
     desc: string,
-    id: string
+    id: string,
+    services?: [ServiceData],
+    shopType: string,
+    certificate: string
   }
-  
+
  interface ShopJson {
     success: boolean,
     count: number,
@@ -85,3 +112,51 @@ interface SingleShopItem {
     shop: ShopItem,
     createAt: Date,
   }
+
+  interface RequestItem { 
+  _id: string,
+  shop: ShopItemForRequest,
+  user: User,     //user ID
+  createdAt: Date,
+  reason: string | "",
+  status: string,
+  requestType: string,
+}
+interface RequestItemToCreateShop { 
+  shop: ShopItemForRequest,
+  user: User,     //user ID
+  requestType: string,
+}
+
+interface ShopItemForRequest {
+  name: string,
+  address: string,
+  district: string,
+  province: string,
+  postalcode: string,
+  tel: string,
+  picture: string[],
+  region:string,
+  openTime:string,
+  closeTime:string,
+  desc: string,
+  shopType:string,
+  services?:ServiceBase[],
+  certificate?:string
+}
+interface ServiceBase {
+  name: string;
+  desc: string;
+  price: string;
+  duration: string;
+}
+interface Service extends ServiceBase {
+  id: string; // ใช้ ID ชั่วคราวจาก crypto.randomUUID()
+}
+
+interface User {
+  _id: string,
+  name: string,
+  // email: string,
+  // role: string
+}

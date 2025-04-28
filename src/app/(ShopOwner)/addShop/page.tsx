@@ -1,7 +1,7 @@
 // src/app/booking/manage/@dashboard/page.tsx
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
-import CreateShopForm from '@/components/addShopFormFull';
+import CreateShopRequestForm from '@/components/addShopFormFull';
 import FileUploadInputTest from '@/components/FileUploadInputTest';
 
 export default async function addShopForAdminPage() {
@@ -12,8 +12,8 @@ export default async function addShopForAdminPage() {
       <main className="bg-slate-500 m-5 p-5 rounded-lg">
         <div className="space-y-5">
 
-          {session.user.role === 'shopOwner' && <FileUploadInputTest />}
-          {session.user.role === 'shopOwner' && <CreateShopForm />}
+          {/* {session.user.role === 'shopOwner' && <FileUploadInputTest />} */}
+          {session.user.role === 'shopOwner' && <CreateShopRequestForm />}
         </div>
       </main>
     );

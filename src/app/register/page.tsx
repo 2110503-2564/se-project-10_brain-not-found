@@ -30,7 +30,8 @@ export default function RegisterPage() {
             const signInResult = await signIn("credentials", {
                 email: userEmail,
                 password: userPassword,
-                redirect: false, // Prevent automatic redirect
+                redirect: true, // Prevent automatic redirect
+                callbackUrl: callbackUrl,
             });
 
             if (signInResult?.error) {

@@ -112,14 +112,14 @@ export function ReviewMenu({
     <>
       {(session?.user?.role === 'admin' || session?.user?._id === reviewOwnerId) && (
         <IconButton onClick={handleClickMenu}>
-          <MoreVerticalIcon />
+          <MoreVerticalIcon aria-label="More"/>
         </IconButton>
       )}
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleCloseMenu}>
         {(session?.user?._id === reviewOwnerId) && (
-          <MenuItem onClick={handleClickEdit}>Edit</MenuItem>
+          <MenuItem aria-label="Edit" onClick={handleClickEdit}>Edit</MenuItem>
         )}
-        <MenuItem onClick={handleClickDelete}>Delete</MenuItem>
+        <MenuItem aria-label="Delete" onClick={handleClickDelete}>Delete</MenuItem>
         
       </Menu>
 
@@ -137,9 +137,9 @@ export function ReviewMenu({
 
       {/* Edit Dialog */}
       <Dialog open={openEditDialog} onClose={() => toggleEditDialog(false)}>
-        <DialogTitle>Edit Review</DialogTitle>
+        <DialogTitle aria-label="Dialog Edit Review">Edit Review</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-          <Rating
+          <Rating aria-label="Rating in Edit Review"
             value={rating}
             onChange={(_, newValue) => setRating(newValue)}
           />
@@ -159,8 +159,8 @@ export function ReviewMenu({
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => toggleEditDialog(false)}>Cancel</Button>
-          <Button onClick={handleConfirmEdit}>Save</Button>
+          <Button aria-label="Cancel in Edit" onClick={() => toggleEditDialog(false)}>Cancel</Button>
+          <Button aria-label="Save in Edit" onClick={handleConfirmEdit}>Save</Button>
         </DialogActions>
       </Dialog>
     </>

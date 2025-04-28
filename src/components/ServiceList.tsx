@@ -4,13 +4,6 @@
 import React from 'react';
 
 // Interface สำหรับ Service ที่มี ID (อาจจะ import มาจากที่เดียวกับ Form หลัก)
-interface Service {
-  id: string; // ID ที่สร้างจาก Client หรือ Server
-  name: string;
-  description: string;
-  price: string; // หรือ number
-  duration: string;
-}
 
 interface ServiceListProps {
   services: Service[];
@@ -38,7 +31,7 @@ const ServiceList: React.FC<ServiceListProps> = ({ services, onDeleteService }) 
           className="grid grid-cols-5 gap-4 text-gray-700 border-b py-2 px-2 items-center hover:bg-gray-50" // Added hover effect
         >
           <div className="col-span-1 truncate">{service.name}</div>
-          <div className="col-span-2 truncate">{service.description || '-'}</div> {/* Handle empty description */}
+          <div className="col-span-2 truncate">{service.desc || '-'}</div> {/* Handle empty description */}
           <div className="col-span-1">{service.price}</div>
           <div className="col-span-1 flex justify-between items-center">
             <span>{service.duration}</span>
