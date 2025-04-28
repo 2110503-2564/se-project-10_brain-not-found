@@ -1,6 +1,8 @@
 "use client";
 
 import approveRequest from "@/libs/approveRequest";
+import { deleteFileFromGCS } from "@/libs/gcsUpload";
+import getRequest from "@/libs/getRequest";
 import rejectRequest from "@/libs/rejectRequest";
 import { ExpandLess, ExpandMore } from "@mui/icons-material";
 import {
@@ -148,7 +150,7 @@ export function RequestInfoButtonGroup({session, status, requestId} : {session: 
         return (
             <div className="flex justify-evenly w-full">
                 <EditButton status={status} requestId={requestId}/>
-                <DeleteButton/>
+                <DeleteButton status={status} requestId={requestId}/>
             </div>
         )
     } else if (role === 'admin') {
@@ -176,17 +178,132 @@ function EditButton({status, requestId} : {status: string, requestId: string}) {
     )
 }
 
-function DeleteButton() {
+function DeleteButton({ requestId, status }: { requestId: string, status: string }) { // รับ requestId และ status
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { data: session } = useSession();
+  const router = useRouter();
+  console.log("id:", requestId, "status:", status);
 
-    const handleClick = () => {
-        return null;
+      const handleClickDelete = () => {
+        setOpenDeleteDialog(true);
+    };
+
+    const handleCloseDeleteDialog = () => {
+        setOpenDeleteDialog(false);
     }
 
-    return (
-        <Button color="error" variant="contained" onClick={handleClick}>
+  const handleConfirmDelete = async () => {
+    setIsSubmitting(true);
+    let requestData: RequestData; // เก็บข้อมูล request ที่ fetch มา
+
+    try {
+        const token = session?.user.token;
+        if (!token) {
+            throw new Error("No token found in session. Please login again.");
+        }
+
+        console.log("Step 1: Fetching request data for ID:", requestId);
+        // --- 1. ดึงข้อมูล Request ---
+        const requestResult = await getRequest(requestId, token);
+        if (!requestResult.success || !requestResult.data) {
+            throw new Error("Failed to fetch request details before deletion.");
+        }
+        requestData = requestResult.data;
+        if (!requestData.shop) {
+          throw new Error("Shop data is missing from the request.");
+        }
+        console.log("Request data fetched:", requestData);
+
+        // --- 2. เตรียม Path และเรียก deleteFileFromGCS ---
+        const picturePaths = requestData.shop.picture || [];
+        const certificatePath = requestData.shop?.certificate ;
+
+        const pathsToDelete = [...picturePaths];
+        if (certificatePath) {
+            pathsToDelete.push(certificatePath);
+        }
+
+        if (pathsToDelete.length > 0) {
+            console.log("Step 2: Attempting to delete GCS files:", pathsToDelete);
+            await Promise.allSettled( // ใช้ allSettled เพื่อให้ทำงานต่อแม้บางไฟล์จะลบไม่สำเร็จ
+                pathsToDelete.map(async (gcsPath) => {
+                    try {
+                        await deleteFileFromGCS(gcsPath);
+                        console.log(`Successfully deleted GCS file: ${gcsPath}`);
+                    } catch (deleteError) {
+                        // Log error แต่ไม่ throw เพื่อให้ลบ DB ต่อได้
+                        console.error(`Failed to delete GCS file ${gcsPath}:`, deleteError);
+                    }
+                })
+            );
+            console.log("Finished attempting GCS file deletions.");
+        } else {
+            console.log("Step 2: No GCS files associated with this request to delete.");
+        }
+
+        // --- 3. เรียก API ลบ Database ---
+        console.log("Step 3: Deleting request record from database for ID:", requestId);
+        const res = await fetch(`${process.env.BACKEND_URL}/api/v1/requests/${requestId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+
+        if (!res.ok) {
+            const errorResponse = await res.text();
+            console.error("Backend error response (DB Deletion):", errorResponse);
+            // อาจจะพิจารณาว่าควรแจ้ง Error เรื่องลบ DB ไม่สำเร็จหรือไม่ แม้จะลบไฟล์ไปแล้ว
+            throw new Error('Failed to delete request record from database');
+        }
+
+        console.log("Request record deleted successfully from database");
+        alert("Request deleted successfully!");
+        router.push('/request'); // Redirect (ใช้ /request หรือ /myrequest ตามที่ถูกต้อง)
+        router.refresh();
+
+    } catch (error) {
+        // จัดการ Error ทั้งหมดที่เกิดขึ้น
+        if (error instanceof Error) {
+            console.error("Delete process failed:", error.message);
+            alert(`Delete failed: ${error.message}`);
+        } else {
+            console.error("Delete process failed:", error);
+            alert("An unknown error occurred during deletion.");
+        }
+    } finally {
+        setIsSubmitting(false);
+        setOpenDeleteDialog(false);
+    }
+
+  };
+  return (
+    <>
+        {/* ปุ่ม Delete จะ disable ถ้า status เป็น approved */}
+        <Button color="error" variant="contained" onClick={handleClickDelete} disabled={status === 'approved' || isSubmitting}>
             Delete
         </Button>
-    )
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog disableScrollLock open={openDeleteDialog} onClose={handleCloseDeleteDialog}
+            PaperProps={{
+                className: 'w-full max-w-lg rounded-lg'
+            }}
+        >
+            <DialogTitle>Delete Request</DialogTitle>
+            <DialogContent>
+                <DialogContentText>Are you sure you want to delete this request? This action cannot be undone.</DialogContentText>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={(e) => {e.stopPropagation(); handleCloseDeleteDialog();}} disabled={isSubmitting}>Cancel</Button>
+                <Button color="error" onClick={(e)=>{e.stopPropagation(); handleConfirmDelete();}} disabled={isSubmitting}>
+                    {isSubmitting ? 'Deleting...' : 'Delete'}
+                </Button>
+            </DialogActions>
+        </Dialog>
+    </>
+)
 }
 
 function ApproveButton({status, requestId} : {status: string, requestId: string}) {

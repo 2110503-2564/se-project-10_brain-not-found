@@ -1,16 +1,17 @@
 // src/components/request-info/client-display.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Typography, Paper, Stack, Grid, Box } from '@mui/material';
+import { Typography, Paper, Stack, Grid, Box, Skeleton } from '@mui/material';
 import { RequestInfoButtonGroup, RequestInfoStatus, ServiceCard } from './client'; // Import existing client components
 import { Session } from 'next-auth'; // Import Session type
+import { getSignedUrlForGCSPath } from '@/libs/gcsGetSignedPath';
 
 interface RequestInfoClientDisplayProps {
     request: RequestData;
     session: Session; // Pass session down
-    certificateSignedUrl: string | null; // Pass the generated signed URL
+    certificateGcsPath: string | null; // Pass the generated signed URL
 }
 
 // Helper Components (copied from server.tsx for simplicity, could be shared)
@@ -29,7 +30,7 @@ const Info = ({ children }: { children: React.ReactNode }) => (
 export function RequestInfoClientDisplay({
     request,
     session,
-    certificateSignedUrl,
+    certificateGcsPath,
 }: RequestInfoClientDisplayProps) {
     const { shop, user } = request;
 
@@ -37,7 +38,33 @@ export function RequestInfoClientDisplay({
     const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
     const [index, setIndex] = useState(0);
 
-    const openModal = (imageUrl: string) => {
+    const [signedCertUrlForDisplay, setSignedCertUrlForDisplay] = useState<string | null>(null);
+    const [signedUrlLoading, setSignedUrlLoading] = useState(false);
+
+    useEffect(() => {
+        const fetchCertSignedUrl = async () => {
+            if (!certificateGcsPath) {
+                setSignedCertUrlForDisplay(null);
+                return;
+            }
+
+            setSignedUrlLoading(true);
+            try {
+                const signedUrl = await getSignedUrlForGCSPath(certificateGcsPath);
+                setSignedCertUrlForDisplay(signedUrl);
+            } catch (err) {
+                console.error(`Failed to get signed URL for certificate ${certificateGcsPath}:`, err);
+                setSignedCertUrlForDisplay(null); // หรือตั้งเป็น Placeholder URL
+            } finally {
+                setSignedUrlLoading(false);
+            }
+        };
+
+        fetchCertSignedUrl();
+    }, [certificateGcsPath]); // ทำงานเมื่อ GCS Path เปลี่ยน
+
+    const openModal = (imageUrl: string | null) => { // Allow null
+        if (!imageUrl) return; // Don't open modal if URL is null
         setModalImageUrl(imageUrl);
         setIsModalOpen(true);
     };
@@ -50,7 +77,7 @@ export function RequestInfoClientDisplay({
 
     const handleImageChange = (e : React.MouseEvent) => {
         e.stopPropagation();
-        if (modalImageUrl === certificateSignedUrl || modalImageUrl === null) return;
+        if (modalImageUrl === certificateGcsPath || modalImageUrl === null) return;
         setIndex((index) => (index + 1) % shop.picture.length);
         setModalImageUrl(shop.picture[index]);
     }
@@ -58,6 +85,16 @@ export function RequestInfoClientDisplay({
     // Picture dimensions (can be adjusted)
     const SHOP_PICTURE_SIZE = { width: 350, height: 350 };
     const CERT_PICTURE_SIZE = { width: 200, height: 300 };
+
+    const constructPublicGcsUrl = (gcsPath: string | undefined | null): string => {
+        const placeholder = '/img/placeholder.png'; // ควรมีไฟล์นี้ใน public/img
+        if (!gcsPath) return placeholder;
+        if (gcsPath.startsWith('http')) return gcsPath;
+
+        const bucketBaseUrl = `https://storage.googleapis.com/${process.env.NEXT_PUBLIC_GCS_BUCKET_NAME || 'brain_not_found_app'}`;
+        const path = gcsPath.startsWith('/') ? gcsPath.substring(1) : gcsPath;
+        return `${bucketBaseUrl}/${path}`;
+    };
 
     const shopImageUrl = shop.picture && shop.picture.length > 0 ? shop.picture[0] : '/img/placeholder.png'; // Fallback image
 
@@ -127,20 +164,35 @@ export function RequestInfoClientDisplay({
                     </Stack>
                 </div>
 
-                {/* --- Certificate Image --- */}
+                {/* --- Certificate Image (ปรับปรุง) --- */}
                 <div className="order-4 justify-self-center md:text-center">
                     <Stack spacing={1.5}>
                         <Head>Shop Certificate</Head>
-                        {certificateSignedUrl ? (
-                            <Paper elevation={5} sx={{ width: CERT_PICTURE_SIZE.width, height: CERT_PICTURE_SIZE.height, cursor: 'pointer', position: 'relative' }} onClick={() => openModal(certificateSignedUrl)}>
-                                <Image
-                                    style={{ objectFit: 'fill', borderRadius: '4px' }}
-                                    fill
-                                    src={certificateSignedUrl}
-                                    alt="Shop Certificate"
-                                />
+                        {signedUrlLoading ? (
+                            // แสดง Skeleton ขณะโหลด Signed URL
+                            <Skeleton variant="rectangular" width={CERT_PICTURE_SIZE.width} height={CERT_PICTURE_SIZE.height} sx={{ borderRadius: '4px' }} />
+                        ) : certificateGcsPath && signedCertUrlForDisplay ? (
+                            // แสดงรูปหรือ Link เมื่อมี Signed URL แล้ว
+                            <Paper elevation={5} sx={{ width: CERT_PICTURE_SIZE.width, height: CERT_PICTURE_SIZE.height, cursor: 'pointer', position: 'relative' }} onClick={() => openModal(signedCertUrlForDisplay)}>
+                                {certificateGcsPath.toLowerCase().endsWith('.pdf') ? (
+                                    // แสดง Link สำหรับ PDF
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                                        <a href={signedCertUrlForDisplay} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                            View PDF Certificate
+                                        </a>
+                                    </Box>
+                                ) : (
+                                    // แสดง Image สำหรับรูปภาพ
+                                    <Image
+                                        style={{ objectFit: 'fill', borderRadius: '4px' }}
+                                        fill
+                                        src={signedCertUrlForDisplay} // ใช้ Signed URL ที่ได้จาก State
+                                        alt="Shop Certificate"
+                                    />
+                                )}
                             </Paper>
                         ) : (
+                            // แสดง Placeholder ถ้าไม่มี Path หรือโหลด Signed URL ไม่สำเร็จ
                             <Paper elevation={1} sx={{ width: CERT_PICTURE_SIZE.width, height: CERT_PICTURE_SIZE.height, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f0f0' }}>
                                 <Typography variant="caption" color="textSecondary">No Certificate</Typography>
                             </Paper>
@@ -167,7 +219,7 @@ export function RequestInfoClientDisplay({
                 >
                     <div
                         className="relative max-w-[90vw] max-h-[90vh] bg-white p-2 rounded shadow-lg"
-                        onClick={handleImageChange} // Prevent closing when clicking the image container itself
+                        onClick={modalImageUrl !== signedCertUrlForDisplay ? handleImageChange : (e) => e.stopPropagation()}
                     >
                         {/* Close Button */}
                         <button

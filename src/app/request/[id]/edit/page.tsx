@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation'; // Import redirect
 import { notFound } from 'next/navigation'; // Import notFound
 import EditRequestForm from '@/components/EditRequestForm';
 import getRequest from '@/libs/getRequest'; // Import function ดึงข้อมูล Request
+import { Suspense } from 'react';
+import { LinearProgress } from '@mui/material';
 
 interface PageProps {
     params: {
@@ -57,7 +59,9 @@ export default async function EditShopRequestPage({ params }: PageProps) {
           <main className="bg-slate-100 m-5 p-5 rounded-lg shadow-lg"> {/* ปรับปรุง style เล็กน้อย */}
             <div className="space-y-5">
               {/* ส่ง requestId ไปให้ Form */}
-              <EditRequestForm requestId={requestId} />
+              <Suspense fallback={<LinearProgress/>}>
+                <EditRequestForm requestId={requestId} /> 
+              </Suspense>
               {/* ไม่ต้องเช็ค Role ซ้ำซ้อนที่นี่ เพราะเช็คไปแล้ว */}
             </div>
           </main>

@@ -1,4 +1,4 @@
-'use server'
+'use server' 
 // ... (ส่วนประกาศ import และ setup GCS client) ...
 import { Storage } from '@google-cloud/storage';
 import { Readable } from 'stream';
@@ -96,6 +96,7 @@ export async function uploadFileToGCSAction(
 }
 
 export async function deleteFileFromGCS(filePath: string): Promise<void> {
+    filePath = extractGCSFilePath(filePath);
     
     const storage = new Storage();
     const bucketName = process.env.GCS_BUCKET_NAME;
@@ -127,3 +128,16 @@ export async function deleteFileFromGCS(filePath: string): Promise<void> {
         }
     }
 }
+
+const extractGCSFilePath = (fullUrl: string): string => {
+    const baseUrl = `https://storage.googleapis.com/${process.env.GCS_BUCKET_NAME}/`; 
+    if (fullUrl.startsWith(baseUrl)) {
+      return fullUrl.substring(baseUrl.length);
+    }
+    // Handle cases where URL might already be just the path
+    if (!fullUrl.startsWith('http')) {
+        return fullUrl;
+    }
+    console.warn("Could not extract GCS path from URL:", fullUrl);
+    return fullUrl; // Fallback
+  };

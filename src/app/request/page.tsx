@@ -3,6 +3,8 @@ import getRequests from "@/libs/getRequests";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../api/auth/[...nextauth]/authOptions";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { LinearProgress } from "@mui/material";
 
 export default async function MyRequestPage({
   searchParams,
@@ -24,11 +26,13 @@ export default async function MyRequestPage({
   return (
     <main>
       {/* ส่งข้อมูล requests ไปยัง Request component */}
-      <Request
-        requests={requests}
-        role={session.user.role}   // <-- ส่ง role จาก session
-        token={session.user.token} // <-- ส่ง token จาก session
-      />
+        <Suspense fallback={<LinearProgress/>}>
+        <Request
+          requests={requests}
+          role={session.user.role}   // <-- ส่ง role จาก session
+          token={session.user.token} // <-- ส่ง token จาก session
+        />
+      </Suspense>
     </main>
   );
 }
