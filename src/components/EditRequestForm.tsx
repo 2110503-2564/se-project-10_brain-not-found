@@ -459,22 +459,6 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
                     </div>
                  </div>
             </div>
-
-            {/* Description Group */}
-            <div className="border p-4 rounded-md flex flex-col">
-                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Description & Reason</h3>
-                 {/* Description */}
-                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">Shop Description</label>
-                 <textarea
-                    id="description" name="description"
-                    placeholder="Shop description (optional)"
-                    rows={12}
-                    value={formData.description} onChange={handleInputChange}
-                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline resize-none mb-4"
-                 ></textarea>
-            </div>
-         </div>
-
         {/* Section: Open-Close time, Image, License */}
         <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
             {/* Open-Close time */}
@@ -486,7 +470,7 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
                     <input
                        type="time" id="openTime" name="openTime" required
                        value={formData.openTime} onChange={handleInputChange}
-                       className="shadow appearance-none border rounded w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                       className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     />
                  </div>
                  {/* Close Time */}
@@ -495,12 +479,30 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
                     <input
                        type="time" id="closeTime" name="closeTime" required
                        value={formData.closeTime} onChange={handleInputChange}
-                       className="shadow appearance-none border rounded w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                       className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     />
                  </div>
             </div>
+         </div>
 
-        </div>
+            </div>
+
+         
+            {/* Description Group */}
+            <div className="border p-4 rounded-md flex flex-col w-full">
+                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Description & Reason</h3>
+                 {/* Description */}
+                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">Shop Description</label>
+                 <textarea
+                    id="description" name="description"
+                    placeholder="Shop description (optional)"
+                    rows={12}
+                    value={formData.description} onChange={handleInputChange}
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline resize-none mb-4"
+                 ></textarea>
+            </div>
+
+
             {/* Your Shop image (Multiple) */}
              <div className="border p-4 rounded-md">
                  <h3 className="text-lg font-semibold mb-4 text-gray-800">Shop Images:</h3>
