@@ -11,6 +11,7 @@ test.describe('request info page', () => {
     await page.getByRole('textbox', { name: 'Password' }).fill('123456789');
     await page.getByRole('button', { name: 'Sign in with Credentials' }).click();
     await page.getByRole('link', { name: 'Request' }).click();
+    await page.waitForSelector('h1:text("Your Requests")');
     await expect(page.getByRole('heading', { name: 'Your Requests' })).toBeVisible();
   });
 
@@ -61,3 +62,5 @@ test.describe('new request form', () => {
   });
 
 })
+
+
