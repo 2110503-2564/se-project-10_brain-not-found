@@ -29,7 +29,7 @@ export default function ShopOwnerRequestMenu({ requestId }: ShopOwnerRequestMenu
   };
 
   const handleClickEdit = () => {
-    router.push(`/request/${requestId}`);
+    router.push(`/request/${requestId}/edit`);
     handleCloseMenu();
   };
 

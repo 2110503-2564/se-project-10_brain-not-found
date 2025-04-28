@@ -134,26 +134,33 @@ const CreateShopRequestForm: React.FC = () => {
     let certificateUrl: string | undefined = undefined; // Single URL for license/certificate
 
     try {
-      // --- 1. Upload Shop Images (Multiple) ---
-      if (formData.shopImageFiles.length > 0) {
-        console.log(`Uploading ${formData.shopImageFiles.length} shop image(s)...`);
-        // Use Promise.all to upload files concurrently
-        const uploadFormData = new FormData();
-        const uploadPromises = formData.shopImageFiles.map(async (file) => {
-          uploadFormData.append('file', file); // Add the file
-          uploadFormData.append('folder', 'shop_pictures'); // Add the folder info
-          // Optionally add allowedTypes and maxSize if needed by the action
-          // uploadFormData.append('allowedTypes', 'image/jpeg,image/png,image/gif');
-          // uploadFormData.append('maxSize', (5 * 1024 * 1024).toString());
+     // --- 1. อัปโหลดรูปภาพร้านค้า (ถ้ามี) ---
+     if (formData.shopImageFiles && formData.shopImageFiles.length > 0) {
+      console.log(`Uploading ${formData.shopImageFiles.length} shop images...`);
 
-          // Call the Server Action with FormData
-          const url = await uploadFileToGCSAction(uploadFormData);
-          return url;
-        });
-        pictureUrls = await Promise.all(uploadPromises);
-        console.log("Shop images uploaded via Server Action:", pictureUrls);
-      }
+      // สร้าง Array ของ Promises: แต่ละ Promise คือการเรียก uploadFileToGCSAction สำหรับ 1 ไฟล์
+      const uploadPromises = formData.shopImageFiles.map(file => {
+          const fileFormData = new FormData();
+          fileFormData.append('file', file);
+          fileFormData.append('folder', 'shop_pictures/'); // <-- ระบุ folder ปลายทาง
+          // สามารถเพิ่ม 'allowedTypes', 'maxSize' ได้ถ้า Server Action รองรับ
+          // fileFormData.append('allowedTypes', 'image/jpeg,image/png');
 
+          // เรียก Server Action แล้ว return Promise ที่ได้กลับไป
+          return uploadFileToGCSAction(fileFormData);
+      });
+
+      // ใช้ Promise.all รอให้ทุก Promises ใน Array ทำงานเสร็จ
+      // ผลลัพธ์ (shopPictureUrls) จะเป็น Array ของ URL ตามลำดับไฟล์ที่ส่งไป
+      pictureUrls = await Promise.all(uploadPromises);
+
+      console.log('Shop images uploaded successfully:', pictureUrls);
+  } else {
+       console.log('No shop images to upload.');
+       // อาจจะมีการ validation เพิ่มเติมว่าต้องมีรูปอย่างน้อย 1 รูป
+  }
+
+  
       // --- 2. Upload License Document (Single) ---
       if (formData.licenseDocFile) {
         try {

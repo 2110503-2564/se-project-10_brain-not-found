@@ -1,12 +1,16 @@
 // src/components/addShopFormFull.tsx
 'use client';
+import {
+  IconButton, Menu, MenuItem, Dialog, DialogTitle, DialogContent,
+  DialogContentText, DialogActions, Button
+} from "@mui/material";
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
 // --- Import Components ย่อย ---
 import ServiceList from './ServiceList';
-import FileUploadInput from './FileUploadInput';
+import ManageFileUpload from './ManageFileUpload';
 import ServiceForm from './ServiceForm';
 
 // --- Import API functions ---
@@ -29,8 +33,18 @@ interface ShopFormData {
     closeTime: string;
     services: Service[]; // Keep client-side ID for list management
     shopImageFiles: File[]; // Changed to array for multiple files
+    oldshopImageURL: String[];
+    oldCertImageURL: String[];
     licenseDocFile: File | null; // Keep as single file for now, adjust if needed
 }
+
+const extractGCSFilePath = (fullUrl: string) => {
+    const baseUrl = "https://storage.googleapis.com/brain_not_found_app/";
+    if (fullUrl.startsWith(baseUrl)) {
+      return fullUrl.substring(baseUrl.length);
+    }
+    return fullUrl; // fallback (เผื่อมันเป็น path อยู่แล้ว)
+  };
 
 interface EditShopFormProps {
     requestId: string;
@@ -55,20 +69,35 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
     services: [],
     shopImageFiles: [], // Initialize as empty array
     licenseDocFile: null,
+    oldshopImageURL: [],
+    oldCertImageURL: [],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deletedImageURLs, setDeletedImageURLs] = useState<string[]>([]);
+  const [deletedCertImageURLs, setDeletedCertImageURLs] = useState<string[]>([]);
+  
+  const [currentShopImageURLs, setCurrentShopImageURLs] = useState<string[]>([]);
+  const [currentCertImageURLs, setCurrentCertImageURLs] = useState<string[]>([]);
 
+
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+  const [isReallySubmitting, setIsReallySubmitting] = useState(false);
+  
   // Redirect if not logged in or not a shopOwner
   useEffect(() => {
-    if (!session || !requestId) return;
+    if (!session || !session.user  ||!requestId) return;
   
     const fetchRequest = async () => {
-      try {
+    try {
+      if (!session.user || !session.user.token) {
+        throw new Error("Session is missing user or token.");
+      }
         const result = await getRequest(requestId, session.user.token);
-  
-        if (!session || session.user.role !== 'shopOwner' || result.data.user._id !== session.user._id) {
+
+        if (session.user.role !== 'shopOwner' || result.data.user._id !== session.user._id) {
           router.push('/');
+          return;
         }
   
         if (result.success && result.data) {
@@ -85,9 +114,13 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
             openTime: result.data.shop.openTime,
             closeTime: result.data.shop.closeTime,
             services: result.data.shop.services,
-            shopImageFiles: result.data.shop.picture, // **ยังไม่สามารถโหลด File ตรงนี้ ต้องแยกทำ**
-            licenseDocFile: result.data.shop.certificate // **เหมือนกัน**
+            shopImageFiles: [], // Initialize as empty array
+            oldshopImageURL: result.data.shop.picture,
+            oldCertImageURL: [result.data.shop.certificate as string],// **เหมือนกัน**
+            licenseDocFile: null
           });
+            setCurrentShopImageURLs(result.data.shop.picture);
+            setCurrentCertImageURLs([result.data.shop.certificate as string]);
         } else {
           setError('Failed to load request data.');
         }
@@ -96,6 +129,7 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
         setError('Error loading request data.');
       }
     };
+    setError(''); /*แก้เฉพาะหน้า ในtry รันโค้ดได้จนจบแล้วแต่ยัง catch error อยู่ */
   
     fetchRequest(); // <<< --------------------- เรียกมันตรงนี้
   }, [session, requestId]);
@@ -156,62 +190,95 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
   // --- Submit Handler ---
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setIsSubmitting(true);
     setError(null);
-
+    
     // --- Authentication Check ---
     if (!session || !session.user || !session.user.token || session.user.role !== 'shopOwner') {
-      setError('Authentication failed or insufficient permissions.');
-      setIsSubmitting(false);
+        setError('Authentication failed or insufficient permissions.');
       return;
     }
 
+    const totalImages = (currentShopImageURLs.length | formData.oldshopImageURL.length) + formData.shopImageFiles.length;
+    if (totalImages < 1 || totalImages > 5) {
+      setError('You must have between 1 and 5 shop images.');
+      throw new Error(`You must have between 1 and 5 shop images. Now you have ${totalImages} `);
+    }
+    if((formData.licenseDocFile && currentCertImageURLs.length >= 1 )||(!formData.licenseDocFile && currentCertImageURLs.length === 0) ){
+        
+      setError('You must have 1 Certificate.');
+      throw new Error('You must have 1 Certificate.');
+    }
+
+    setOpenConfirmDialog(true);
+    
+    };
+    
+    const handleConfirmEdit = async () => {
+
+    if (!session || !session.user || !session.user.token || session.user.role !== 'shopOwner') {
+        setError('Authentication failed or insufficient permissions.');
+        return;
+    }
+    
+    setIsReallySubmitting(true);
+    
     let pictureUrls: string[] = []; // Array for multiple image URLs
     let certificateUrl: string | undefined = undefined; // Single URL for license/certificate
-
     try {
-      // --- 1. Upload Shop Images (Multiple) ---
-      if (formData.shopImageFiles.length > 0) {
-        console.log(`Uploading ${formData.shopImageFiles.length} shop image(s)...`);
-        // Use Promise.all to upload files concurrently
-        const uploadFormData = new FormData();
-        const uploadPromises = formData.shopImageFiles.map(async (file) => {
-          uploadFormData.append('file', file); // Add the file
-          uploadFormData.append('folder', 'shop_pictures'); // Add the folder info
-          // Optionally add allowedTypes and maxSize if needed by the action
-          // uploadFormData.append('allowedTypes', 'image/jpeg,image/png,image/gif');
-          // uploadFormData.append('maxSize', (5 * 1024 * 1024).toString());
-
-          // Call the Server Action with FormData
-          const url = await uploadFileToGCSAction(uploadFormData);
-          return url;
+        
+        
+        // --- 1. อัปโหลดรูปภาพร้านค้า (ถ้ามี) ---
+        if (formData.shopImageFiles && formData.shopImageFiles.length > 0) {
+            console.log(`Uploading ${formData.shopImageFiles.length} shop images...`);
+            
+            // สร้าง Array ของ Promises: แต่ละ Promise คือการเรียก uploadFileToGCSAction สำหรับ 1 ไฟล์
+            const uploadPromises = formData.shopImageFiles.map(file => {
+            const fileFormData = new FormData();
+            fileFormData.append('file', file);
+            fileFormData.append('folder', 'shop_pictures/'); // <-- ระบุ folder ปลายทาง
+            // สามารถเพิ่ม 'allowedTypes', 'maxSize' ได้ถ้า Server Action รองรับ
+            // fileFormData.append('allowedTypes', 'image/jpeg,image/png');
+            
+            // เรียก Server Action แล้ว return Promise ที่ได้กลับไป
+            return uploadFileToGCSAction(fileFormData);
         });
+        
+        // ใช้ Promise.all รอให้ทุก Promises ใน Array ทำงานเสร็จ
+        // ผลลัพธ์ (shopPictureUrls) จะเป็น Array ของ URL ตามลำดับไฟล์ที่ส่งไป
         pictureUrls = await Promise.all(uploadPromises);
-        console.log("Shop images uploaded via Server Action:", pictureUrls);
-      }
-
-      // --- 2. Upload License Document (Single) ---
-      if (formData.licenseDocFile) {
+        
+        console.log('Shop images uploaded successfully:', pictureUrls);
+    } else {
+        console.log('No shop images to upload.');
+        // อาจจะมีการ validation เพิ่มเติมว่าต้องมีรูปอย่างน้อย 1 รูป
+    }
+    
+    // --- 2. Upload License Document (Single) ---
+    if (formData.licenseDocFile ) {
         try {
-          console.log("Uploading license document via Server Action...");
-          // Create FormData for the license file
-          const uploadFormData = new FormData();
-          uploadFormData.append('file', formData.licenseDocFile);
-          uploadFormData.append('folder', 'certificates');
-          // Optionally add allowedTypes and maxSize
-          // uploadFormData.append('allowedTypes', 'application/pdf,image/jpeg,image/png');
-          // uploadFormData.append('maxSize', (2 * 1024 * 1024).toString());
-
-          // Call the Server Action with FormData
-          certificateUrl = await uploadFileToGCSAction(uploadFormData);
-          console.log("License document uploaded via Server Action:", certificateUrl);
+            console.log("Uploading license document via Server Action...");
+            // Create FormData for the license file
+            const uploadFormData = new FormData();
+            uploadFormData.append('file', formData.licenseDocFile);
+            uploadFormData.append('folder', 'certificates');
+            // Optionally add allowedTypes and maxSize
+            // uploadFormData.append('allowedTypes', 'application/pdf,image/jpeg,image/png');
+            // uploadFormData.append('maxSize', (2 * 1024 * 1024).toString());
+            
+            // Call the Server Action with FormData
+            certificateUrl = await uploadFileToGCSAction(uploadFormData);
+            console.log("License document uploaded via Server Action:", certificateUrl);
         } catch (uploadError) {
-          throw new Error(`License document upload failed: ${uploadError instanceof Error ? uploadError.message : uploadError}`);
+            throw new Error(`License document upload failed: ${uploadError instanceof Error ? uploadError.message : uploadError}`);
         }
-      }
-
-      // --- 3. Prepare Shop Data (using imported interface) ---
-      const shopData: ShopItemForRequest = {
+    }else{
+        certificateUrl = currentCertImageURLs[0];
+    }
+    
+    pictureUrls = [...currentShopImageURLs, ...pictureUrls];
+    
+    // --- 3. Prepare Shop Data (using imported interface) ---
+    const shopData: ShopItemForRequest = {
         name: formData.shopName,
         tel: formData.phoneNumber,
         shopType: formData.shopType,
@@ -234,6 +301,17 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
         name: session.user.name,
       };
 
+      // --- 0. Delete Shop Images (Multiple) ---
+      const allDeletedUrls = [...deletedImageURLs, ...deletedCertImageURLs];
+      if (allDeletedUrls.length > 0) {
+        console.log("Deleting old images:", allDeletedUrls);
+        await Promise.all(allDeletedUrls.map(async (url) => {
+          const filePath = extractGCSFilePath(url); // <<< เพิ่มตรงนี้
+          await deleteFileFromGCS(filePath);
+        }));
+        console.log("All deleted successfully.");
+    }
+
       // --- 4. Prepare Request Data (using imported interface) ---
       const requestData: RequestItemToCreateShop = {
         shop: shopData,
@@ -244,7 +322,6 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
 
       // --- 5. Call createShopRequest API ---
       console.log('Submitting shop creation request:', requestData);
-      console.log('Request ID:', requestId);
       const result = await editShopRequest(session.user.token, requestData, requestId);
 
       if (result.success) {
@@ -262,7 +339,8 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
            setError(err instanceof Error ? err.message : 'An unknown error occurred.');
       }
     } finally {
-      setIsSubmitting(false);
+        setIsReallySubmitting(false);
+        setOpenConfirmDialog(false);
     }
   };
 
@@ -398,7 +476,7 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
          </div>
 
         {/* Section: Open-Close time, Image, License */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
             {/* Open-Close time */}
             <div className="border p-4 rounded-md">
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Operating Hours</h3>
@@ -408,7 +486,7 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
                     <input
                        type="time" id="openTime" name="openTime" required
                        value={formData.openTime} onChange={handleInputChange}
-                       className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                       className="shadow appearance-none border rounded w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     />
                  </div>
                  {/* Close Time */}
@@ -417,41 +495,46 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
                     <input
                        type="time" id="closeTime" name="closeTime" required
                        value={formData.closeTime} onChange={handleInputChange}
-                       className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                       className="shadow appearance-none border rounded w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     />
                  </div>
             </div>
 
+        </div>
             {/* Your Shop image (Multiple) */}
              <div className="border p-4 rounded-md">
                  <h3 className="text-lg font-semibold mb-4 text-gray-800">Shop Images:</h3>
-                 <FileUploadInput
-                    id="shopImageFiles" // Match state key
-                    name="shopImageFiles" // Match state key
+                 <ManageFileUpload
+                    id="shopImageFiles"
+                    name="shopImageFiles"
                     label="Shop Images (Optional)"
                     accept="image/jpeg, image/png, image/gif"
                     onChange={handleFileChange}
-                    fileName={displaySelectedFileNames(formData.shopImageFiles)} // Display multiple file info
-                    multiple={true} // Allow multiple file selection
+                    fileName={displaySelectedFileNames(formData.shopImageFiles)}
+                    existingFiles={formData.oldshopImageURL as string[]}
+                    multiple={true}
                     required={true}
-                 />
+                    onDeletedUrlsChange={setDeletedImageURLs}
+                    onCurrentFilesChange={setCurrentShopImageURLs}
+                    />
              </div>
 
              {/* ใบรับรอง (Single) */}
              <div className="border p-4 rounded-md">
                  <h3 className="text-lg font-semibold mb-4 text-gray-800">Certificate:</h3>
-                 <FileUploadInput
+                 <ManageFileUpload
                     id="licenseDocFile"
                     name="licenseDocFile"
                     label="Certificate (Optional)"
                     accept=".pdf, image/jpeg, image/png"
                     onChange={handleFileChange}
                     fileName={formData.licenseDocFile?.name}
+                    existingFiles={formData.oldCertImageURL as string[]}
                     required={true}
-                    // multiple={false} // Default is false, explicitly set if needed
-                 />
+                    onDeletedUrlsChange={setDeletedCertImageURLs}
+                    onCurrentFilesChange={setCurrentCertImageURLs}
+                    />
              </div>
-        </div>
 
         {/* Section: Services offered */}
         <div className="border p-4 rounded-md">
@@ -474,6 +557,42 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
         </div>
 
       </form>
+      
+      <Dialog disableScrollLock open={openConfirmDialog} onClose={() => setOpenConfirmDialog(false)}
+  PaperProps={{
+    className: 'w-full max-w-lg rounded-lg'
+  }}
+>
+  <DialogTitle>Confirm Edit</DialogTitle>
+  <DialogContent>
+    <DialogContentText>
+      Are you sure you want to submit the changes to your shop request?
+    </DialogContentText>
+  </DialogContent>
+  <DialogActions>
+    <Button
+      onClick={() => setOpenConfirmDialog(false)}
+      disabled={isReallySubmitting}
+    >
+      Back
+    </Button>
+    <Button
+      variant="contained"
+      color="primary"
+      onClick={handleConfirmEdit}
+      disabled={isReallySubmitting}
+      startIcon={isReallySubmitting ? (
+        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+      ) : null}
+    >
+      {isReallySubmitting ? 'Submitting...' : 'Confirm'}
+    </Button>
+  </DialogActions>
+</Dialog>
+
     </div>
   );
 };

@@ -1,4 +1,3 @@
-// src/libs/rejectRequest.ts
 
 /**
  * Calls the backend API to reject a shop creation request.
