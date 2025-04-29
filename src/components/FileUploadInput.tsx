@@ -12,6 +12,7 @@ interface FileInputProps {
   fileName?: string | null; // ชื่อไฟล์/ข้อความสรุปที่เลือก (ส่งมาจาก Parent)
   required?: boolean;
   multiple?: boolean; // Prop สำหรับเปิด/ปิดการเลือกหลายไฟล์
+  disabled?: boolean; // Prop สำหรับเปิด/ปิดการใช้งาน
 }
 
 const FileUploadInput: React.FC<FileInputProps> = ({
@@ -23,6 +24,7 @@ const FileUploadInput: React.FC<FileInputProps> = ({
   fileName,
   required = false,
   multiple = false, // ค่า default เป็น false
+  disabled = false, // ค่า default เป็น false
 }) => {
   return (
     <div>
@@ -48,6 +50,7 @@ const FileUploadInput: React.FC<FileInputProps> = ({
           className="sr-only"
           required={required && !fileName}
           multiple={multiple} // ใส่ attribute multiple ตาม prop ที่ได้รับ
+          disabled={disabled}
         />
       </label>
       {/* แสดงชื่อไฟล์/ข้อความสรุปที่เลือก */}
