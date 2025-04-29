@@ -103,7 +103,9 @@ export default function ShopOwnerRequestMenu({ requestId }: ShopOwnerRequestMenu
         console.error("Backend error response:", errorResponse);
         throw new Error('Failed to cancel request');
       }
-  
+      
+      alert("Request canceled successfully!");
+
       router.refresh();
       window.location.reload();
     } catch (error) {
@@ -146,7 +148,7 @@ export default function ShopOwnerRequestMenu({ requestId }: ShopOwnerRequestMenu
         <DialogActions>
           <Button onClick={(e) => {e.stopPropagation();setOpenCancelDialog(false);}} disabled={isSubmitting}>Back</Button>
           <Button color="error" onClick={(e)=>{e.stopPropagation();handleConfirmCancel();}} disabled={isSubmitting}>
-            {isSubmitting ? 'Cancelling...' : 'Cancel'}
+            {isSubmitting ? 'Cancelling...' : 'Confirm Cancel'}
           </Button>
         </DialogActions>
       </Dialog>
