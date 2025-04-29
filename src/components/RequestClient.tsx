@@ -80,10 +80,17 @@ export default function RequestClient({ requests, role, token }: RequestClientPr
       return;
     }
 
+    if (!newReason.trim()) {
+      alert("Please provide a reason for rejection.");
+      return;
+  }
+
     console.log("Attempting to save reason:");
     console.log("Request ID:", selectedRequestId);
     console.log("Token:", token ? 'Token present' : 'Token MISSING!'); // Check if token exists
     console.log("New Reason:", newReason);
+
+    
 
     try {
       await editReason(selectedRequestId, token, newReason);
