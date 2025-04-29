@@ -40,19 +40,6 @@ interface ShopFormData {
     licenseDocFile: File | null; // Keep as single file for now, adjust if needed
 }
 
-const extractGCSFilePath = (fullUrl: string): string => {
-  const baseUrl = `https://storage.googleapis.com/${process.env.NEXT_PUBLIC_GCS_BUCKET_NAME || 'brain_not_found_app'}/`; 
-  if (fullUrl.startsWith(baseUrl)) {
-    return fullUrl.substring(baseUrl.length);
-  }
-  // Handle cases where URL might already be just the path
-  if (!fullUrl.startsWith('http')) {
-      return fullUrl;
-  }
-  console.warn("Could not extract GCS path from URL:", fullUrl);
-  return fullUrl; // Fallback
-};
-
 interface EditShopFormProps {
     requestId: string;
   }
@@ -323,6 +310,12 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
     event.preventDefault();
     setError(null);
 
+    // --- Authentication Check ---
+    if (!session || !session.user || !session.user.token || session.user.role !== 'shopOwner') {
+        setError('Authentication failed or insufficient permissions.');
+      return;
+    }
+
     // --- Validation (ปรับปรุง) ---
     const totalCurrentImages = currentShopImageURLs.length + formData.shopImageFiles.length;
     if (totalCurrentImages < 1 || totalCurrentImages > 5) {
@@ -336,11 +329,7 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
         return;
     }
 
-    // --- Authentication Check ---
-    if (!session || !session.user || !session.user.token || session.user.role !== 'shopOwner') {
-        setError('Authentication failed or insufficient permissions.');
-      return;
-    }
+
     setOpenConfirmDialog(true);
     };
     
@@ -381,28 +370,6 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                 console.log("New license document uploaded:", uploadedNewCertificateUrl);
             }
 
-      // --- 2. ลบไฟล์ *เก่า* ที่ถูก Mark ไว้ ---
-      const allUrlsToDelete = [...deletedImageURLs, ...deletedCertImageURLs];
-      if (allUrlsToDelete.length > 0) {
-          console.log("Deleting marked old files:", allUrlsToDelete);
-          await Promise.all(allUrlsToDelete.map(async (url) => {
-              try {
-                  const filePath = extractGCSFilePath(url);
-                  if (filePath) { // Ensure filePath is valid before attempting deletion
-                    await deleteFileFromGCS(filePath);
-                    console.log(`Successfully deleted: ${filePath}`);
-                  } else {
-                    console.warn(`Skipping deletion for invalid path derived from URL: ${url}`);
-                  }
-              } catch (deleteError) {
-                // Log individual deletion errors but continue trying others
-                console.error(`Failed to delete file ${url}:`, deleteError);
-                // Optionally: Collect failed deletions to inform the user
-              }
-          }));
-          console.log("Finished attempting deletions.");
-      }
-    
       // --- 3. เตรียมข้อมูลสำหรับ API ---
       // รวม URL รูปภาพ: รูปเดิมที่เหลืออยู่ + รูปใหม่ที่อัปโหลด
       const finalPictureUrls = [...currentShopImageURLs, ...uploadedNewPictureUrls];
@@ -442,15 +409,61 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
       console.log('Submitting shop creation request:', requestData);
       const result = await editShopRequest(session.user.token, requestData, requestId);
 
+      
       if (result.success) {
         console.log('Shop creation request successful:', result);
         router.push('/request?status=request_submitted');
       } else {
         throw new Error(result.message || 'Failed to submit shop creation request.');
       }
+
+            // --- 2. ลบไฟล์ *เก่า* ที่ถูก Mark ไว้ ---
+      const allUrlsToDelete = [...deletedImageURLs, ...deletedCertImageURLs];
+      if (allUrlsToDelete.length > 0) {
+          console.log("Deleting marked old files:", allUrlsToDelete);
+          await Promise.all(allUrlsToDelete.map(async (url) => {
+              try {
+                  const filePath = url
+                  if (filePath) { // Ensure filePath is valid before attempting deletion
+                    await deleteFileFromGCS(filePath);
+                    console.log(`Successfully deleted: ${filePath}`);
+                  } else {
+                    console.warn(`Skipping deletion for invalid path derived from URL: ${url}`);
+                  }
+              } catch (deleteError) {
+                // Log individual deletion errors but continue trying others
+                console.error(`Failed to delete file ${url}:`, deleteError);
+                // Optionally: Collect failed deletions to inform the user
+              }
+          }));
+          console.log("Finished attempting deletions.");
+      }
+    
     } catch (err) {
       console.error('Submission failed:', err);
-      // More specific error handling for Promise.all failures
+      
+      if (uploadedNewPictureUrls.length > 0 || uploadedNewCertificateUrl) {
+        console.warn("Submission failed after new file upload. Attempting to delete newly uploaded files...");
+        const newFilesToDelete = [...uploadedNewPictureUrls]; // pictureUrls เป็น URL เต็ม
+        if (uploadedNewCertificateUrl) {
+            newFilesToDelete.push(uploadedNewCertificateUrl); // certificateUrl เป็น Path
+        }
+
+        try {
+            await Promise.allSettled(newFilesToDelete.map(async (pathOrUrl) => {
+                try {
+                    await deleteFileFromGCS(pathOrUrl);
+                    console.log(`Successfully deleted orphaned new file: ${pathOrUrl}`);
+                } catch (deleteError) {
+                    console.error(`Failed to delete orphaned new file ${pathOrUrl}:`, deleteError);
+                }
+            }));
+            console.log("Finished attempting to delete orphaned new files.");
+        } catch (cleanupError) {
+            console.error("Error during new file cleanup process:", cleanupError);
+        }
+    }
+   
       if (err instanceof AggregateError) {
            setError(`One or more file uploads failed: ${err.errors.map(e => e instanceof Error ? e.message : String(e)).join(', ')}`);
       } else {

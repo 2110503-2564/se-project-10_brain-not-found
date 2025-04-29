@@ -15,7 +15,7 @@ import ServiceForm from './ServiceForm';
 
 // --- Import API functions ---
 import createShopRequest from '@/libs/createShopRequest';
-import { uploadFileToGCSAction } from '@/libs/gcsUpload';
+import { deleteFileFromGCS, uploadFileToGCSAction } from '@/libs/gcsUpload';
 import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
 
 interface CreateShopFormData {
@@ -212,9 +212,17 @@ const addShopFormFull: React.FC = () => {
   // --- Confirm and Cancel Handlers ---
   const handleConfirmSubmit = async () => {
     setIsSubmitting(true);
-    // ... (เดิมคือ codeใน handleSubmit มาอยู่ใน handleConfirmSubmit)
     setError(null);
     console.log('Form data before submit:', formData); // <-- เพิ่ม log ตรวจสอบ
+
+    
+    // --- Authentication Check (ใช้ status ด้วย) ---
+    if (status !== 'authenticated' || !session || !session.user || !session.user.token || session.user.role !== 'shopOwner') {
+        setError('Authentication failed or insufficient permissions.');
+        setIsSubmitting(false);
+        setOpenConfirmDialog(false); // Close dialog
+        return;
+    }
 
     // --- Validation ---
     if (formData.shopImageFiles.length === 0) {
@@ -227,15 +235,6 @@ const addShopFormFull: React.FC = () => {
         setError("Please select the certificate file.");
         setIsSubmitting(false);
         setOpenConfirmDialog(false);
-        return;
-    }
-    // ... other validations ...
-
-    // --- Authentication Check (ใช้ status ด้วย) ---
-    if (status !== 'authenticated' || !session || !session.user || !session.user.token || session.user.role !== 'shopOwner') {
-        setError('Authentication failed or insufficient permissions.');
-        setIsSubmitting(false);
-        setOpenConfirmDialog(false); // Close dialog
         return;
     }
 
@@ -308,7 +307,34 @@ const addShopFormFull: React.FC = () => {
             throw new Error(result.message || 'Failed to submit shop creation request.');
         }
     } catch (err) {
-        console.error('Detailed submission failed:', err); // <-- เพิ่ม log ที่ละเอียดขึ้น
+        console.error('Detailed submission failed:', err);
+
+        // --- Logic การลบไฟล์ที่อัปโหลดไปแล้ว ถ้าเกิด Error ---
+        if (pictureUrls.length > 0 || certificateUrl) {
+            console.warn("Submission failed after file upload. Attempting to delete uploaded files...");
+            const filesToDelete = [...pictureUrls]; // pictureUrls เป็น URL เต็ม
+            if (certificateUrl) {
+                filesToDelete.push(certificateUrl); // certificateUrl เป็น Path
+            }
+
+            try {
+                await Promise.allSettled(filesToDelete.map(async (pathOrUrl) => {
+                    try {
+                        // deleteFileFromGCS ถูกแก้ไขให้รับได้ทั้ง Path และ URL แล้ว
+                        await deleteFileFromGCS(pathOrUrl);
+                        console.log(`Successfully deleted orphaned file: ${pathOrUrl}`);
+                    } catch (deleteError) {
+                        console.error(`Failed to delete orphaned file ${pathOrUrl}:`, deleteError);
+                        // ไม่ต้อง throw error ซ้ำ แค่ log ไว้
+                    }
+                }));
+                console.log("Finished attempting to delete orphaned files.");
+            } catch (cleanupError) {
+                // Error ตอนเรียก Promise.allSettled (ไม่น่าเกิด แต่ใส่ไว้กันเหนียว)
+                console.error("Error during file cleanup process:", cleanupError);
+            }
+        }
+        
         if (err instanceof AggregateError) {
             setError(`One or more file uploads failed: ${err.errors.map(e => e instanceof Error ? e.message : String(e)).join(', ')}`);
         } else {
@@ -519,7 +545,7 @@ const addShopFormFull: React.FC = () => {
                   <FileUploadInput
                       id="shopImageFiles"
                       name="shopImageFiles"
-                      label="Add/Replace Shop Images (Select multiple)"
+                      label="Add/Replace Shop Images (up to 5 image)"
                       accept="image/jpeg, image/png, image/gif"
                       onChange={handleFileChange}
                       multiple={true}
