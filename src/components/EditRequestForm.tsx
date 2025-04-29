@@ -2,8 +2,7 @@
 'use client';
 import {
   IconButton, Menu, MenuItem, Dialog, DialogTitle, DialogContent,
-  DialogContentText, DialogActions, Button,
-  Snackbar, Alert // <--- เพิ่ม Snackbar และ Alert
+  DialogContentText, DialogActions, Button
 } from "@mui/material";
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -11,18 +10,17 @@ import { useSession } from 'next-auth/react';
 
 // --- Import Components ย่อย ---
 import ServiceList from './ServiceList';
-// import ManageFileUpload from './ManageFileUpload'; // ไม่ได้ใช้แล้ว ลบออกได้
+import ManageFileUpload from './ManageFileUpload';
 import ServiceForm from './ServiceForm';
-import FileUploadInput from './FileUploadInput';
 
+import FileUploadInput from './FileUploadInput'; // ยังคงใช้ตัวนี้สำหรับ Input
 // --- Import API functions ---
 import editShopRequest from '@/libs/editShopRequest';
-import { uploadFileToGCSAction, deleteFileFromGCS } from '@/libs/gcsUpload';
+import { uploadFileToGCSAction, deleteFileFromGCS } from '@/libs/gcsUpload'; // Adjust path if needed
 import getRequest from '@/libs/getRequest';
 import Image from 'next/image';
 import { getSignedUrlForGCSPath } from "@/libs/gcsGetSignedPath";
 
-// ... (interfaces ShopFormData, EditShopFormProps เหมือนเดิม) ...
 interface ShopFormData {
     shopName: string;
     phoneNumber: string;
@@ -32,7 +30,7 @@ interface ShopFormData {
     region: string;
     province: string;
     district: string;
-    description: string;
+    description: string; // <--- มีอยู่แล้ว
     openTime: string;
     closeTime: string;
     services: Service[]; // Keep client-side ID for list management
@@ -45,7 +43,6 @@ interface ShopFormData {
 interface EditShopFormProps {
     requestId: string;
   }
-
 
 const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
   const router = useRouter();
@@ -60,38 +57,37 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
     region: '',
     province: '',
     district: '',
-    description: '',
+    description: '', // <--- มีอยู่แล้ว
     openTime: '',
     closeTime: '',
     services: [],
-    shopImageFiles: [],
+    shopImageFiles: [], // Initialize as empty array
     licenseDocFile: null,
+    // oldshopImageURL: [],
+    // oldCertImageURL: [],
+
   });
 
-  // State สำหรับจัดการไฟล์ *เดิม*
-  const [currentShopImageURLs, setCurrentShopImageURLs] = useState<string[]>([]);
-  const [currentCertImageURLs, setCurrentCertImageURLs] = useState<string[]>([]);
-  const [deletedImageURLs, setDeletedImageURLs] = useState<string[]>([]);
-  const [deletedCertImageURLs, setDeletedCertImageURLs] = useState<string[]>([]);
+// State สำหรับจัดการไฟล์ *เดิม*
+    const [currentShopImageURLs, setCurrentShopImageURLs] = useState<string[]>([]);
+    const [currentCertImageURLs, setCurrentCertImageURLs] = useState<string[]>([]); // เก็บเป็น Array เผื่อกรณี Error
+    const [deletedImageURLs, setDeletedImageURLs] = useState<string[]>([]);
+    const [deletedCertImageURLs, setDeletedCertImageURLs] = useState<string[]>([]);
 
-  // State สำหรับ Preview ไฟล์ *ใหม่*
-  const [shopImagePreviewUrls, setShopImagePreviewUrls] = useState<string[]>([]);
-  const [licensePreviewUrl, setLicensePreviewUrl] = useState<string | null>(null);
+    const [originalCertificatePath, setOriginalCertificatePath] = useState<string | null>(null);
 
-  // const [isSubmitting, setIsSubmitting] = useState(false); // ไม่ได้ใช้แล้ว ลบออกได้
-  const [error, setError] = useState<string | null>(null); // ยังใช้สำหรับแสดง error ใต้ฟอร์ม
-  const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
-  const [isReallySubmitting, setIsReallySubmitting] = useState(false);
-  const [isLoadingData, setIsLoadingData] = useState(true);
+    // State สำหรับ Preview ไฟล์ *ใหม่*
+    const [shopImagePreviewUrls, setShopImagePreviewUrls] = useState<string[]>([]);
+    const [licensePreviewUrl, setLicensePreviewUrl] = useState<string | null>(null);
 
-  // --- State สำหรับ Snackbar ---
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
-  // ---------------------------
+    const [isSubmitting, setIsSubmitting] = useState(false); // ใช้ isReallySubmitting แทนได้
+    const [error, setError] = useState<string | null>(null);
+    const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+    const [isReallySubmitting, setIsReallySubmitting] = useState(false);
+    const [isLoadingData, setIsLoadingData] = useState(true); // State สำหรับ Loading ข้อมูล
 
-  // --- useEffects (เหมือนเดิม) ---
-  useEffect(() => {
+// --- useEffect for Auth & Data Fetching ---
+    useEffect(() => {
         if (status === 'loading') return; // รอ session โหลดเสร็จ
 
         if (!session || !session.user || !session.user.token || !requestId) {
@@ -135,40 +131,31 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
                     licenseDocFile: null, // เริ่มต้นไฟล์ใหม่เป็น null
                 });
 
-                // --- แก้ไข: ดึง Signed URL สำหรับรูปภาพร้านค้าเดิม ---
-                const shopPictureSignedUrls = await Promise.all(
-                    (result.data.shop?.picture || []).map(async (path: string) => {
-                        try {
-                            return await getSignedUrlForGCSPath(path);
-                        } catch (err) {
-                            console.error(`Failed to get signed URL for shop image ${path}:`, err);
-                            return null; // หรือ URL placeholder
-                        }
-                    })
-                );
-                const validShopPictureUrls = shopPictureSignedUrls.filter(url => url !== null) as string[];
-                // ----------------------------------------------------
+                const certPath = result.data.shop?.certificate;
+                setOriginalCertificatePath(certPath || null);
 
-                // --- แก้ไข: ดึง Signed URL สำหรับ Certificate เดิม ---
                 let certificateSignedUrl: string | null = null;
-                if (result.data.shop?.certificate) {
+                if (certPath) {
                     try {
-                        certificateSignedUrl = await getSignedUrlForGCSPath(result.data.shop.certificate);
+                        // ตรวจสอบเบื้องต้นว่า path ที่ได้มาเป็น URL อยู่แล้วหรือไม่
+                        if (certPath.startsWith('http')) {
+                            console.warn("Fetched certificate path looks like a URL:", certPath);
+                            // อาจจะต้องมี logic เพิ่มเติมเพื่อดึง path จริงๆ ออกมา
+                        }
+                        certificateSignedUrl = await getSignedUrlForGCSPath(certPath);
                     } catch (err) {
                         console.error("Failed to get signed URL for certificate:", err);
                     }
                 }
-                // -------------------------------------------------
-
-                // ตั้งค่า State สำหรับไฟล์เดิม (ใช้ Signed URLs)
-                setCurrentShopImageURLs(validShopPictureUrls);
-                setCurrentCertImageURLs(certificateSignedUrl ? [certificateSignedUrl] : []);
+                setCurrentCertImageURLs(certificateSignedUrl ? [certificateSignedUrl] : []); // เก็บ signed URL สำหรับแสดงผล
+                setCurrentShopImageURLs(result.data.shop?.picture || []);
                 setDeletedImageURLs([]); // Reset deleted lists
                 setDeletedCertImageURLs([]);
 
             } catch (err) {
                 console.error("Error loading request data:", err);
                 setError(err instanceof Error ? err.message : 'Error loading request data.');
+                // อาจจะ Redirect หรือแสดงข้อความ Error ที่ชัดเจนขึ้น
             } finally {
                 setIsLoadingData(false);
             }
@@ -205,8 +192,7 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
         };
     }, [formData.shopImageFiles, formData.licenseDocFile]);
 
-
-  // --- Handlers (Input, File, Service, etc. - เหมือนเดิม) ---
+  // --- Handlers ---
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
@@ -342,16 +328,11 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
     // --- Authentication Check ---
     if (!session || !session.user || !session.user.token || session.user.role !== 'shopOwner') {
         setError('Authentication failed or insufficient permissions.');
-        // --- แสดง Snackbar ---
-        setSnackbarMessage('Authentication failed or insufficient permissions.');
-        setSnackbarSeverity('error');
-        setSnackbarOpen(true);
-        // ------------------
-        return;
+      return;
     }
 
-    // --- Validation ---
-    const validationErrors: string[] = [];
+    // --- Validation (ปรับปรุง) ---
+    const validationErrors: string[] = []; // ใช้ Array เก็บ Error เหมือนหน้า Add
 
     // --- Required Field Checks ---
     if (!formData.shopName.trim()) validationErrors.push("Shop Name is required.");
@@ -362,7 +343,7 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
     if (!formData.region.trim()) validationErrors.push("Region is required.");
     if (!formData.province.trim()) validationErrors.push("Province is required.");
     if (!formData.district.trim()) validationErrors.push("District is required.");
-    if (!formData.description.trim()) validationErrors.push("Shop Description is required.");
+    if (!formData.description.trim()) validationErrors.push("Shop Description is required."); // <--- เพิ่มการตรวจสอบ description
     if (!formData.openTime) validationErrors.push("Open Time is required.");
     if (!formData.closeTime) validationErrors.push("Close Time is required.");
 
@@ -381,14 +362,9 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
 
     // --- Check if there are any validation errors ---
     if (validationErrors.length > 0) {
-        const errorString = `Validation failed: ${validationErrors.join(', ')}`;
-        setError(errorString);
+        // รวม error เป็น string เดียว คั่นด้วย ", " (หรือจะแสดงเป็น list ก็ได้)
+        setError(`Validation failed: ${validationErrors.join(', ')}`);
         console.log("Validation Errors (Edit):", validationErrors);
-        // --- แสดง Snackbar ---
-        setSnackbarMessage('Please fix the validation errors.');
-        setSnackbarSeverity('error');
-        setSnackbarOpen(true);
-        // ------------------
         return; // Stop submission
     }
 
@@ -396,34 +372,20 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
     setOpenConfirmDialog(true);
     };
 
-    // --- Snackbar Close Handler ---
-    const handleSnackbarClose = (event?: React.SyntheticEvent | Event, reason?: string) => {
-        if (reason === 'clickaway') {
-        return;
-        }
-        setSnackbarOpen(false);
-    };
 
     const handleConfirmEdit = async () => {
     if (!session || !session.user || !session.user.token || session.user.role !== 'shopOwner') {
         setError('Authentication failed or insufficient permissions.');
         setOpenConfirmDialog(false);
-        // --- แสดง Snackbar ---
-        setSnackbarMessage('Authentication failed or insufficient permissions.');
-        setSnackbarSeverity('error');
-        setSnackbarOpen(true);
-        // ------------------
         return;
     }
 
     setIsReallySubmitting(true);
     setError(null);
-    setOpenConfirmDialog(false); // ปิด Dialog ยืนยันก่อน
 
     let uploadedNewPictureUrls: string[] = [];
     let uploadedNewCertificateUrl: string | undefined = undefined;
-    // --- เก็บ Path ของไฟล์เดิมที่จะลบ (ไม่ใช่ Signed URL) ---
-    let originalPathsToDelete: string[] = [];
+    let pathsToDeleteOnGCS: string[] = [];
 
     try {
        // --- 1. อัปโหลดไฟล์ *ใหม่* (ถ้ามี) ---
@@ -448,41 +410,30 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                 console.log("New license document uploaded:", uploadedNewCertificateUrl);
             }
 
-      // --- 2. ดึง Path เดิมของไฟล์ที่จะลบ (ก่อนเตรียมข้อมูล API) ---
-      // เราต้องดึง path เดิมจากข้อมูลที่ fetch มาตอนแรก ไม่ใช่ signed url
-      // สมมติว่าข้อมูลเดิมเก็บไว้ใน state หรือ ref ชื่อ originalRequestData
-      // const originalRequestData = await getRequest(requestId, session.user.token); // หรือดึงจาก state ที่เก็บไว้
-      // if (!originalRequestData.success || !originalRequestData.data) {
-      //     throw new Error("Could not retrieve original data to determine paths for deletion.");
-      // }
-      // const originalShopPictures = originalRequestData.data.shop?.picture || [];
-      // const originalCertificate = originalRequestData.data.shop?.certificate;
-
-      // originalPathsToDelete = [
-      //     ...deletedImageURLs.map(deletedSignedUrl => {
-      //         // หา path เดิมที่ตรงกับ signed url ที่ถูกลบ
-      //         // อาจจะต้องมี logic ซับซ้อนขึ้นถ้า signed url ไม่ตรงกับ path ตรงๆ
-      //         // ตัวอย่างง่ายๆ (อาจจะไม่ถูกต้องเสมอไป):
-      //         const path = originalShopPictures.find(p => deletedSignedUrl.includes(p)); // หาก signed url มี path อยู่
-      //         return path;
-      //     }).filter(path => path !== undefined),
-      //     ...(deletedCertImageURLs.length > 0 && originalCertificate ? [originalCertificate] : [])
-      // ] as string[];
-      // console.log("Original GCS paths marked for deletion:", originalPathsToDelete);
-      // *** หมายเหตุ: การหา original path จาก signed url อาจซับซ้อน ***
-      // *** วิธีที่ดีกว่าคือ เก็บ original path ไว้ใน state ตั้งแต่แรก ***
-      // *** ในที่นี้จะใช้ deletedImageURLs และ deletedCertImageURLs ไปก่อน ***
-      // *** ซึ่งอาจจะไม่ใช่ GCS path จริงๆ ทำให้การลบไฟล์เก่าอาจไม่สำเร็จ ***
-      originalPathsToDelete = [...deletedImageURLs, ...deletedCertImageURLs];
-      console.warn("Using potentially incorrect paths for deletion:", originalPathsToDelete);
-
-
       // --- 3. เตรียมข้อมูลสำหรับ API ---
-      // รวม URL รูปภาพ: รูปเดิมที่เหลืออยู่ (ใช้ Signed URL ไปก่อน) + รูปใหม่ที่อัปโหลด (เป็น Path/URL จาก GCS)
+      // รวม URL รูปภาพ: รูปเดิมที่เหลืออยู่ + รูปใหม่ที่อัปโหลด
       const finalPictureUrls = [...currentShopImageURLs, ...uploadedNewPictureUrls];
-      // เลือก URL ใบรับรอง: อันใหม่ที่อัปโหลด (Path/URL) หรืออันเดิมที่เหลืออยู่ (Signed URL)
-      const finalCertificateUrl = uploadedNewCertificateUrl ?? currentCertImageURLs[0] ?? undefined;
+      // เลือก URL ใบรับรอง: อันใหม่ที่อัปโหลด หรืออันเดิมที่เหลืออยู่
+      let finalCertificatePath: string | undefined = undefined;
 
+      if (uploadedNewCertificateUrl) {
+        // กรณีที่ 1: มีการอัปโหลดไฟล์ใหม่ -> ใช้ path ใหม่, ลบ path เดิม (ถ้ามี)
+        finalCertificatePath = uploadedNewCertificateUrl;
+        if (originalCertificatePath) {
+            // เพิ่ม path เดิมใน list ที่จะลบออกจาก GCS
+            pathsToDeleteOnGCS.push(originalCertificatePath);
+        }
+    } else if (originalCertificatePath) {
+        // กรณีที่ 2: ไม่มีไฟล์ใหม่ -> ใช้ path เดิม (Validation ทำให้มั่นใจว่าอันเดิมไม่ได้ถูกลบ)
+        finalCertificatePath = originalCertificatePath;
+        // ไม่ต้องเพิ่ม originalCertificatePath ใน pathsToDeleteOnGCS
+    } else {
+        // กรณีนี้ไม่ควรเกิดขึ้น ถ้า Validation ทำงานถูกต้อง (totalCurrentCert === 1)
+        console.error("Error: Inconsistent state - No new certificate and no original path found after validation passed.");
+        throw new Error("Could not determine the final certificate path due to inconsistent state.");
+    }
+
+    // --- 3. เตรียมข้อมูลสำหรับ API (ใช้เฉพาะ Path) ---
       const shopData: ShopItemForRequest = {
           name: formData.shopName,
           tel: formData.phoneNumber,
@@ -492,14 +443,12 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
           region: formData.region,
           province: formData.province,
           district: formData.district,
-          desc: formData.description,
+          desc: formData.description, // <--- มีอยู่แล้ว
           openTime: formData.openTime,
           closeTime: formData.closeTime,
-          services: formData.services.map(({ id, ...rest }) => rest),
-          // *** ส่ง Path/URL ที่ถูกต้องไป Backend ***
-          // Backend ควรจะจัดการกับ Signed URL ที่ส่งมาจาก currentShopImageURLs/currentCertImageURLs ด้วย
+          services: formData.services.map(({ id, ...rest }) => rest), // เอา client-side id ออก
           picture: finalPictureUrls,
-          certificate: finalCertificateUrl,
+          certificate: finalCertificatePath,
       };
 
       const User: User = {
@@ -510,7 +459,8 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
       const requestData: RequestItemToCreateShop = {
         shop: shopData,
         user: User,
-        requestType: 'create', // ส่ง 'edit' ไปเลย
+        requestType: 'create', // Backend อาจจะเปลี่ยนเป็น 'edit' ให้เอง หรือเราส่ง 'edit' ไปเลยก็ได้
+        // status, _id, createdAt,Reason edited will be set by backend
       };
 
       // --- 4. Call editShopRequest API ---
@@ -520,41 +470,49 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
 
       if (result.success) {
         console.log('Shop edit request successful:', result);
+
         // --- 5. ลบไฟล์ *เก่า* ที่ถูก Mark ไว้ (ทำหลัง API สำเร็จ) ---
-        if (originalPathsToDelete.length > 0) {
-            console.log("Deleting marked old files (using stored paths):", originalPathsToDelete);
-            await Promise.all(originalPathsToDelete.map(async (path) => {
+        const allUrlsToDelete = [...deletedImageURLs, ...deletedCertImageURLs];
+        if (allUrlsToDelete.length > 0) {
+            console.log("Deleting marked old files:", allUrlsToDelete);
+            await Promise.all(allUrlsToDelete.map(async (url) => {
                 try {
-                    // ใช้ path ที่เก็บไว้ (ซึ่งอาจจะไม่ใช่ GCS path ที่ถูกต้อง)
-                    if (path) {
-                        await deleteFileFromGCS(path);
-                        console.log(`Successfully deleted: ${path}`);
+                    // Assuming the URL is the full GCS path or can be derived
+                    // You might need a helper function to extract the path from the URL if needed
+                    const filePath = url; // Adjust if URL needs parsing
+                    if (filePath) {
+                        await deleteFileFromGCS(filePath);
+                        console.log(`Successfully deleted: ${filePath}`);
                     } else {
-                        console.warn(`Skipping deletion for invalid path: ${path}`);
+                        console.warn(`Skipping deletion for invalid path derived from URL: ${url}`);
                     }
                 } catch (deleteError) {
-                    console.error(`Failed to delete file ${path}:`, deleteError);
+                    console.error(`Failed to delete file ${url}:`, deleteError);
+                    // Optionally: Collect failed deletions to inform the user, but don't block success flow
                 }
             }));
             console.log("Finished attempting deletions.");
         }
-        // --- แสดง Snackbar Success ---
-        setSnackbarMessage('Shop edit request submitted successfully!');
-        setSnackbarSeverity('success');
-        setSnackbarOpen(true);
-        // --- หน่วงเวลาก่อน Redirect ---
-        setTimeout(() => {
-            router.push('/request?status=request_submitted');
-        }, 1500);
-        // ---------------------------
+        if (pathsToDeleteOnGCS.length > 0) {
+            console.log("Deleting marked old files from GCS:", pathsToDeleteOnGCS);
+            await Promise.all(pathsToDeleteOnGCS.map(async (path) => {
+                try {
+                    if (path) {
+                        await deleteFileFromGCS(path);
+                        console.log(`Successfully deleted from GCS: ${path}`);
+                    }
+                } catch (deleteError) {
+                    console.error(`Failed to delete file ${path} from GCS:`, deleteError);
+                }
+            }));
+            console.log("Finished attempting GCS deletions.");
+        }
+        
+        alert("Shop edit request submitted successfully!");
+        
+        router.push('/request?status=request_submitted'); // Redirect after successful edit and deletion
       } else {
         // If API call fails, throw error to trigger cleanup of *newly* uploaded files
-        setError(result.message || 'Failed to submit shop edit request.');
-        // --- แสดง Snackbar Error ---
-        setSnackbarMessage(result.message || 'Failed to submit shop edit request.');
-        setSnackbarSeverity('error');
-        setSnackbarOpen(true);
-        // -------------------------
         throw new Error(result.message || 'Failed to submit shop edit request.');
       }
 
@@ -565,7 +523,10 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
       if (uploadedNewPictureUrls.length > 0 || uploadedNewCertificateUrl) {
         console.warn("Submission failed after new file upload. Attempting to delete newly uploaded files...");
         const newFilesToDelete = [...uploadedNewPictureUrls];
-        if (uploadedNewCertificateUrl) newFilesToDelete.push(uploadedNewCertificateUrl);
+        if (uploadedNewCertificateUrl) {
+            newFilesToDelete.push(uploadedNewCertificateUrl);
+        }
+
         try {
             await Promise.allSettled(newFilesToDelete.map(async (pathOrUrl) => {
                 try {
@@ -581,36 +542,29 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
         }
     }
 
-      // --- Set error message และแสดง Snackbar ---
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred during submission.';
-      if (!error) { // Set error state only if not already set by API response
-          if (err instanceof AggregateError) {
-               setError(`One or more file uploads failed: ${err.errors.map(e => e instanceof Error ? e.message : String(e)).join(', ')}`);
-          } else {
-               setError(errorMessage);
-          }
+      // Set error message for the user
+      if (err instanceof AggregateError) {
+           setError(`One or more file uploads failed: ${err.errors.map(e => e instanceof Error ? e.message : String(e)).join(', ')}`);
+      } else {
+           setError(err instanceof Error ? err.message : 'An unknown error occurred during submission.');
       }
-      setSnackbarMessage(errorMessage);
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-      // ------------------------------------
-
     } finally {
         setIsReallySubmitting(false);
-        // ไม่ต้องปิด Dialog ที่นี่แล้ว
-        // setOpenConfirmDialog(false);
+        setOpenConfirmDialog(false);
     }
   };
 
   // --- JSX ---
     if (isLoadingData || status === 'loading') {
-        return <div className="text-center my-10"><p>Loading...</p></div>;
+        return <div className="text-center my-10"><p>Loading...</p></div>; // แสดง Loading
     }
 
+    // Check session after loading
     if (status !== 'authenticated' || !session || !session.user) {
         return <div className="text-center my-10"><p className="text-red-500">Access Denied.</p></div>;
-    }
+  }
 
+  // Helper function to check if a specific field has an error
   const hasError = (fieldName: string): boolean => {
     return !!error && error.toLowerCase().includes(fieldName.toLowerCase());
   };
@@ -623,8 +577,9 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-            {/* --- Sections ต่างๆ (เหมือนเดิม) --- */}
-            {/* Shop Detail */}
+
+            {/* --- Sections: Shop Detail, Location, Description, Operating Hours (เหมือนเดิม) --- */}
+            {/* ... (JSX ของ Sections อื่นๆ) ... */}
              <div className="border p-4 rounded-md">
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Shop Detail</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -647,7 +602,7 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                     </label>
                     <input
                         type="tel" id="phoneNumber" name="phoneNumber"
-                        placeholder="Phone number i.e 0987654321" required
+                        placeholder="Phone number" required
                         value={formData.phoneNumber} onChange={handleInputChange}
                         className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${hasError("Phone number") ? 'border-red-500' : ''}`}
                     />
@@ -673,7 +628,6 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                     <div></div> {/* Placeholder */}
                 </div>
             </div>
-            {/* Location & Description */}
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Location Group */}
                 <div className="border p-4 rounded-md h-full flex flex-col">
@@ -710,21 +664,23 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                 {/* Description Group */}
                 <div className="border p-4 rounded-md flex flex-col">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Description</h3>
+                    {/* --- เพิ่ม * สีแดง และ required --- */}
                     <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">
                         Shop Description <span className="text-red-500">*</span>
                     </label>
                     <textarea
                         id="description" name="description"
-                        placeholder="Shop description"
+                        placeholder="Shop description" // <--- เอา (optional) ออก
                         rows={12}
-                        required
+                        required // <--- เพิ่ม required
                         value={formData.description} onChange={handleInputChange}
+                        // <--- เพิ่ม class เช็ค error ---
                         className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline resize-none mb-4 ${hasError("Shop Description") ? 'border-red-500' : ''}`}
                     ></textarea>
                 </div>
             </div>
-            {/* Operating Hours */}
              <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                {/* Open-Close time */}
                 <div className="border p-4 rounded-md">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Operating Hours</h3>
                     <div className="mb-3">
@@ -747,11 +703,11 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
             </div>
 
 
-            {/* Shop Images */}
+            {/* --- Section: Shop Images (ปรับปรุง) --- */}
             <div className={`border p-4 rounded-md space-y-4 ${hasError("image") ? 'border-red-500' : ''}`}>
                 <h3 className="text-lg font-semibold text-gray-800">Shop Images (1-5 images)</h3>
 
-                {/* Current Images */}
+                {/* 1. Current Images */}
                 {currentShopImageURLs.length > 0 && (
                     <div className="border border-dashed border-blue-300 p-3 rounded-md">
                         <p className="text-sm font-medium text-blue-700 mb-2">Current Images:</p>
@@ -759,7 +715,13 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                             {currentShopImageURLs.map((url) => (
                                 <div key={url} className="relative group border p-1 rounded shadow-sm">
                                     <Image src={url} alt="Current Shop Image" width={100} height={100} className="object-cover rounded w-full h-24" />
-                                    <button type="button" onClick={() => handleMarkForDeletion(url, 'shop')} className="absolute top-0 right-0 m-1 bg-red-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity" aria-label={`Mark ${url} for deletion`}>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleMarkForDeletion(url, 'shop')}
+                                        className="absolute top-0 right-0 m-1 bg-red-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity"
+                                        aria-label={`Mark ${url} for deletion`}
+                                    >
+                                        {/* Delete Icon */}
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                                     </button>
                                 </div>
@@ -768,7 +730,7 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                     </div>
                 )}
 
-                {/* Newly Selected Images Preview */}
+                {/* 2. Newly Selected Images Preview */}
                 {shopImagePreviewUrls.length > 0 && (
                     <div className="border border-dashed border-green-300 p-3 rounded-md">
                         <p className="text-sm font-medium text-green-700 mb-2">New Images to Upload:</p>
@@ -776,17 +738,30 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                             {shopImagePreviewUrls.map((url, index) => (
                                 <div key={index} className="relative group border p-1 rounded shadow-sm">
                                     <img src={url} alt={`New Shop Preview ${index + 1}`} className="object-cover rounded w-full h-24" />
-                                    <button type="button" onClick={() => handleRemoveNewShopImage(index)} className="absolute top-0 right-0 m-1 bg-red-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity" aria-label={`Remove new image ${index + 1}`}>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveNewShopImage(index)}
+                                        className="absolute top-0 right-0 m-1 bg-red-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity"
+                                        aria-label={`Remove new image ${index + 1}`}
+                                    >
+                                        {/* Remove Icon */}
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                                     </button>
                                 </div>
                             ))}
                         </div>
-                        <button type="button" onClick={handleClearAllNewShopImages} className="mt-2 text-sm text-red-600 hover:text-red-800 underline">Clear All New Images</button>
+                        {/* Clear All New Images Button */}
+                        <button
+                            type="button"
+                            onClick={handleClearAllNewShopImages}
+                            className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+                        >
+                            Clear All New Images
+                        </button>
                     </div>
                 )}
 
-                {/* Deleted Images (Restore Option) */}
+                {/* 3. Deleted Images (Restore Option) */}
                 {deletedImageURLs.length > 0 && (
                     <div className="border border-dashed border-red-300 p-3 rounded-md">
                         <p className="text-sm font-medium text-red-700 mb-2">Images Marked for Deletion:</p>
@@ -794,7 +769,13 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                             {deletedImageURLs.map((url) => (
                                 <div key={url} className="relative group border p-1 rounded shadow-sm opacity-60">
                                     <Image src={url} alt="Deleted Shop Image" width={100} height={100} className="object-cover rounded w-full h-24" />
-                                    <button type="button" onClick={() => handleRestoreDeleted(url, 'shop')} className="absolute top-0 right-0 m-1 bg-blue-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity" aria-label={`Restore ${url}`}>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRestoreDeleted(url, 'shop')}
+                                        className="absolute top-0 right-0 m-1 bg-blue-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity"
+                                        aria-label={`Restore ${url}`}
+                                    >
+                                        {/* Restore Icon (e.g., Undo) */}
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
                                     </button>
                                 </div>
@@ -803,33 +784,52 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                     </div>
                 )}
 
-                {/* File Input Button */}
-                <FileUploadInput id="shopImageFiles" name="shopImageFiles" label="Add More Shop Images" accept="image/jpeg, image/png, image/gif" onChange={handleFileChange} multiple={true} required={currentShopImageURLs.length + formData.shopImageFiles.length === 0} disabled={currentShopImageURLs.length + formData.shopImageFiles.length >= 5} />
-                {(currentShopImageURLs.length + formData.shopImageFiles.length >= 5) && <p className="text-sm text-red-500 mt-1">Maximum 5 images reached.</p>}
+                {/* 4. File Input Button */}
+                <FileUploadInput
+                    id="shopImageFiles"
+                    name="shopImageFiles"
+                    label="Add More Shop Images"
+                    accept="image/jpeg, image/png, image/gif"
+                    onChange={handleFileChange}
+                    multiple={true}
+                    required={currentShopImageURLs.length + formData.shopImageFiles.length === 0} // Required ถ้าไม่มีรูปเลย
+                    // Disable button if max limit reached
+                    disabled={currentShopImageURLs.length + formData.shopImageFiles.length >= 5}
+                />
+                 {/* Display message if max limit reached */}
+                {(currentShopImageURLs.length + formData.shopImageFiles.length >= 5) &&
+                    <p className="text-sm text-red-500 mt-1">Maximum 5 images reached.</p>
+                }
+
             </div>
 
-            {/* Certificate */}
+            {/* --- Section: Certificate (ปรับปรุง) --- */}
             <div className={`border p-4 rounded-md space-y-4 ${hasError("certificate") ? 'border-red-500' : ''}`}>
                 <h3 className="text-lg font-semibold text-gray-800">Certificate</h3>
 
-                {/* Current Certificate */}
+                {/* 1. Current Certificate */}
                 {currentCertImageURLs.length > 0 && (
                     <div className="border border-dashed border-blue-300 p-3 rounded-md">
                         <p className="text-sm font-medium text-blue-700 mb-2">Current Certificate:</p>
                         <div className="relative group border p-1 rounded shadow-sm inline-block">
-                            {currentCertImageURLs[0].toLowerCase().includes('.pdf') ? ( // เช็คจาก URL ถ้ามี .pdf
+                            {currentCertImageURLs[0].toLowerCase().endsWith('.pdf') ? (
                                  <a href={currentCertImageURLs[0]} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">View PDF Certificate</a>
                             ) : (
                                  <Image src={currentCertImageURLs[0]} alt="Current Certificate" width={150} height={100} className="object-contain rounded h-20 border" />
                             )}
-                            <button type="button" onClick={() => handleMarkForDeletion(currentCertImageURLs[0], 'certificate')} className="absolute top-0 right-0 m-1 bg-red-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity" aria-label={`Mark ${currentCertImageURLs[0]} for deletion`}>
+                            <button
+                                type="button"
+                                onClick={() => handleMarkForDeletion(currentCertImageURLs[0], 'certificate')}
+                                className="absolute top-0 right-0 m-1 bg-red-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity"
+                                aria-label={`Mark ${currentCertImageURLs[0]} for deletion`}
+                            >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                             </button>
                         </div>
                     </div>
                 )}
 
-                {/* Newly Selected Certificate Preview */}
+                {/* 2. Newly Selected Certificate Preview */}
                 {licensePreviewUrl && formData.licenseDocFile && (
                     <div className="border border-dashed border-green-300 p-3 rounded-md">
                         <p className="text-sm font-medium text-green-700 mb-2">New Certificate to Upload:</p>
@@ -837,71 +837,108 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                             {formData.licenseDocFile.type.startsWith('image/') ? (
                                 <img src={licensePreviewUrl} alt="New Certificate Preview" className="object-contain rounded h-20 border"/>
                             ) : (
-                                <a href={licensePreviewUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate max-w-xs">{formData.licenseDocFile.name}</a>
+                                <a href={licensePreviewUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate max-w-xs">
+                                    {formData.licenseDocFile.name}
+                                </a>
                             )}
-                            <button type="button" onClick={handleRemoveNewLicense} className="absolute top-0 right-0 m-1 bg-red-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity" aria-label="Remove new certificate">
+                            <button
+                                type="button"
+                                onClick={handleRemoveNewLicense}
+                                className="absolute top-0 right-0 m-1 bg-red-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity"
+                                aria-label="Remove new certificate"
+                            >
                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                             </button>
                         </div>
                     </div>
                  )}
 
-                {/* Deleted Certificate (Restore Option) */}
+                {/* 3. Deleted Certificate (Restore Option) */}
                 {deletedCertImageURLs.length > 0 && (
                     <div className="border border-dashed border-red-300 p-3 rounded-md">
                         <p className="text-sm font-medium text-red-700 mb-2">Certificate Marked for Deletion:</p>
                         <div className="relative group border p-1 rounded shadow-sm inline-block opacity-60">
-                            {deletedCertImageURLs[0].toLowerCase().includes('.pdf') ? ( // เช็คจาก URL ถ้ามี .pdf
+                            {deletedCertImageURLs[0].toLowerCase().endsWith('.pdf') ? (
                                  <span className="text-gray-500">PDF Certificate (Marked for deletion)</span>
                             ) : (
                                  <Image src={deletedCertImageURLs[0]} alt="Deleted Certificate" width={150} height={100} className="object-contain rounded h-20 border" />
                             )}
-                            <button type="button" onClick={() => handleRestoreDeleted(deletedCertImageURLs[0], 'certificate')} className="absolute top-0 right-0 m-1 bg-blue-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity" aria-label={`Restore ${deletedCertImageURLs[0]}`}>
+                            <button
+                                type="button"
+                                onClick={() => handleRestoreDeleted(deletedCertImageURLs[0], 'certificate')}
+                                className="absolute top-0 right-0 m-1 bg-blue-500 text-white rounded-full p-1 text-xs leading-none opacity-80 group-hover:opacity-100 transition-opacity"
+                                aria-label={`Restore ${deletedCertImageURLs[0]}`}
+                            >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
                             </button>
                         </div>
                     </div>
                 )}
 
-                {/* File Input Button */}
-                <FileUploadInput id="licenseDocFile" name="licenseDocFile" label="Add/Replace Certificate" accept=".pdf, image/jpeg, image/png" onChange={handleFileChange} multiple={false} required={currentCertImageURLs.length + (formData.licenseDocFile ? 1 : 0) === 0} disabled={currentCertImageURLs.length + (formData.licenseDocFile ? 1 : 0) >= 1} />
-                {(currentCertImageURLs.length + (formData.licenseDocFile ? 1 : 0) >= 1) && <p className="text-sm text-gray-500 mt-1">A certificate is already present. Adding a new one will replace the current one upon submission.</p>}
+                {/* 4. File Input Button */}
+                <FileUploadInput
+                    id="licenseDocFile"
+                    name="licenseDocFile"
+                    label="Add/Replace Certificate"
+                    accept=".pdf, image/jpeg, image/png"
+                    onChange={handleFileChange}
+                    multiple={false}
+                    required={currentCertImageURLs.length + (formData.licenseDocFile ? 1 : 0) === 0} // Required ถ้าไม่มีเลย
+                    // Disable ถ้ามี Certificate อยู่แล้ว (ทั้งเก่าและใหม่)
+                    disabled={currentCertImageURLs.length + (formData.licenseDocFile ? 1 : 0) >= 1}
+                />
+                {/* Display message if certificate exists */}
+                {(currentCertImageURLs.length + (formData.licenseDocFile ? 1 : 0) >= 1) &&
+                    <p className="text-sm text-gray-500 mt-1">A certificate is already present. Adding a new one will replace the current one upon submission.</p>
+                }
             </div>
 
 
-            {/* Services */}
+            {/* --- Section: Services offered (เหมือนเดิม) --- */}
             <div className="border p-4 rounded-md">
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Services offered:</h3>
                 <ServiceForm onAddService={handleAddService} />
                 <ServiceList services={formData.services} onDeleteService={handleDeleteService} />
             </div>
 
-            {/* Submit Button */}
+            {/* --- Submit Button --- */}
             <div className="text-center pt-4">
-                <button type="submit" disabled={isReallySubmitting} className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded focus:outline-none focus:shadow-outline ${isReallySubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                <button
+                    type="submit"
+                    disabled={isReallySubmitting} // ใช้ isReallySubmitting
+                    className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded focus:outline-none focus:shadow-outline ${
+                    isReallySubmitting ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                >
                     {isReallySubmitting ? 'Submitting...' : 'Submit Changes'}
                 </button>
             </div>
         </form>
 
-        {/* --- Error Display Area --- */}
         <div className="py-6">
                 {error && (
                     <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
                         <strong className="font-bold">Error:</strong>
+                        {/* --- แสดง Error แบบ List ถ้าเป็น Validation Error --- */}
                         {typeof error === 'string' && error.startsWith('Validation failed:') ? (
                             <ul className="list-disc list-inside mt-1">
-                                {error.substring('Validation failed:'.length).split(/\s*,\s*/).filter(msg => msg.trim() !== '').map((errMsg, index) => (<li key={index}>{errMsg.trim()}</li>))}
+                                {error.substring('Validation failed:'.length)
+                                      .split(/\s*,\s*/) // Split by comma and optional spaces
+                                      .filter(msg => msg.trim() !== '') // Filter out empty strings
+                                      .map((errMsg, index) => (
+                                          <li key={index}>{errMsg.trim()}</li> // Trim whitespace
+                                      ))
+                                }
                             </ul>
                         ) : typeof error === 'string' ? (
                             <span className="block sm:inline ml-1">{error}</span>
                         ) : null }
                     </div>
                 )}
-        </div>
+            </div>
 
-        {/* --- Confirmation Dialog --- */}
-        <Dialog disableScrollLock open={openConfirmDialog} onClose={() => setOpenConfirmDialog(false)} >
+        {/* --- Confirmation Dialog (เหมือนเดิม) --- */}
+        <Dialog disableScrollLock open={openConfirmDialog} onClose={() => setOpenConfirmDialog(false)} /* ... */ >
             <DialogTitle>Confirm Edit</DialogTitle>
             <DialogContent>
                 <DialogContentText>
@@ -910,24 +947,11 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
             </DialogContent>
             <DialogActions>
                 <Button onClick={() => setOpenConfirmDialog(false)} disabled={isReallySubmitting}>Back</Button>
-                <Button variant="contained" color="primary" onClick={handleConfirmEdit} disabled={isReallySubmitting} >
+                <Button variant="contained" color="primary" onClick={handleConfirmEdit} disabled={isReallySubmitting} /* ... */ >
                 {isReallySubmitting ? 'Submitting...' : 'Confirm'}
                 </Button>
             </DialogActions>
         </Dialog>
-
-        {/* --- Snackbar for Success/Error --- */}
-        <Snackbar
-            open={snackbarOpen}
-            autoHideDuration={6000}
-            onClose={handleSnackbarClose}
-            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        >
-            <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
-                {snackbarMessage}
-            </Alert>
-        </Snackbar>
-        {/* --------------------------------- */}
     </div>
 );
 };
