@@ -1,6 +1,7 @@
 
 import { test, expect } from "@playwright/test";
 import exp from "constants";
+import { headers } from "next/headers";
 test.beforeEach(async ({ page }) => {
   await page.goto("http://localhost:3000/");
 
@@ -627,6 +628,301 @@ test('Admin cannot edit any review and rating', async ({ page }) => {
     
 });
 
+test('Customer cannot save edited review with missing header', async ({ page }) => {
+  await page.getByRole("link", { name: "Sign-In" }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Credentials" })
+  ).toBeVisible();
+
+  // Customer enters email and password
+  await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
+  await page.fill('input[name="password"]', "12345678");
+
+  await page.getByRole("button", { name: "Sign in with Credentials" }).click();
+  // Expect to see Sign-Out button after login
+
+  await page.getByRole("link", { name: "Massage" }).click();
+  // Go to the shop page (assuming we navigate to a specific shop page)
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
+
+  // มี review ขอตัวเองจริงๆ
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  await page.getByText("TeeAsCustomer3");
+  const errorText = page.getByText("You have already submitted a review.");
+
+  // เลื่อนลงไปหา element ถ้ายังไม่อยู่ในจอ
+  await errorText.scrollIntoViewIfNeeded();
+
+  // ค่อย expect ว่าเห็นแล้ว
+  await expect(errorText).toBeVisible();
+  
+  const moreButton = page.getByLabel('More');
+
+  // เลื่อนขึ้นไปหา More ก่อน ถ้ายังไม่อยู่ในจอ
+  await moreButton.scrollIntoViewIfNeeded();
+
+  // คลิกปุ่ม More
+  await moreButton.click();
+
+
+  // 2. รอเมนูแสดงผล (จริง ๆ กดแล้วเมนูมัน popup เลย)
+  const editButton = page.getByRole('menuitem', { name: 'Edit' });
+  const deleteButton = page.getByRole('menuitem', { name: 'Delete' });
+
+  await expect(editButton).toBeVisible();
+  await expect(deleteButton).toBeVisible();
+
+  // 3. กด Edit
+  await editButton.click();
+
+  await page.getByLabel('Dialog Edit Review').isVisible();
+
+  // Rating
+  await page.getByLabel('Rating in Edit Review').isVisible();
+  // Title
+  await page.getByLabel('Title in Edit Review').isVisible();
+  await page.getByLabel('Comment in Edit Review').isVisible();
+  await page.getByLabel('Title').fill('');
+  await expect(page.getByLabel('Title')).toHaveValue('');
+  // Save
+  await page.getByLabel('Save in Edit').isVisible();
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  const [dialog] = await Promise.all([
+    page.waitForEvent('dialog'), // รอ alert เด้ง
+    page.getByLabel('Save in Edit').click(), // กด Save ที่ทำให้ error
+  ]);
+  
+  // ตรวจสอบข้อความใน alert
+  expect(dialog.message()).toContain('Failed to edit review: Validation failed: header: Please add a header');
+
+  
+  // กด OK บน alert
+  await dialog.accept();
+    
+});
+
+test('Customer cannot save edited review with missing comment', async ({ page }) => {
+  await page.getByRole("link", { name: "Sign-In" }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Credentials" })
+  ).toBeVisible();
+
+  // Customer enters email and password
+  await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
+  await page.fill('input[name="password"]', "12345678");
+
+  await page.getByRole("button", { name: "Sign in with Credentials" }).click();
+  // Expect to see Sign-Out button after login
+
+  await page.getByRole("link", { name: "Massage" }).click();
+  // Go to the shop page (assuming we navigate to a specific shop page)
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
+
+  // มี review ขอตัวเองจริงๆ
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  await page.getByText("TeeAsCustomer3");
+  const errorText = page.getByText("You have already submitted a review.");
+
+  // เลื่อนลงไปหา element ถ้ายังไม่อยู่ในจอ
+  await errorText.scrollIntoViewIfNeeded();
+
+  // ค่อย expect ว่าเห็นแล้ว
+  await expect(errorText).toBeVisible();
+  
+  const moreButton = page.getByLabel('More');
+
+  // เลื่อนขึ้นไปหา More ก่อน ถ้ายังไม่อยู่ในจอ
+  await moreButton.scrollIntoViewIfNeeded();
+
+  // คลิกปุ่ม More
+  await moreButton.click();
+
+
+  // 2. รอเมนูแสดงผล (จริง ๆ กดแล้วเมนูมัน popup เลย)
+  const editButton = page.getByRole('menuitem', { name: 'Edit' });
+  const deleteButton = page.getByRole('menuitem', { name: 'Delete' });
+
+  await expect(editButton).toBeVisible();
+  await expect(deleteButton).toBeVisible();
+
+  // 3. กด Edit
+  await editButton.click();
+
+  await page.getByLabel('Dialog Edit Review').isVisible();
+
+  // เจอ 3 label 
+  await page.getByLabel('Rating in Edit Review').isVisible();
+  await page.getByLabel('Title in Edit Review').isVisible();
+  await page.getByLabel('Comment in Edit Review').isVisible();
+
+  await page.getByLabel('Comment').fill('');
+  await expect(page.getByLabel('Comment')).toHaveValue('');
+  // Save
+  await page.getByLabel('Save in Edit').isVisible();
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  const [dialog] = await Promise.all([
+    page.waitForEvent('dialog'), // รอ alert เด้ง
+    page.getByLabel('Save in Edit').click(), // กด Save ที่ทำให้ error
+  ]);
+  
+  // ตรวจสอบข้อความใน alert
+  expect(dialog.message()).toContain('Failed to edit review: Validation failed: comment: Please add a comment');
+
+  
+  // กด OK บน alert
+  await dialog.accept();
+    
+});
+
+
+test('Customer cannot save edited review with header longer than 50 characters', async ({ page }) => {
+  await page.getByRole("link", { name: "Sign-In" }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Credentials" })
+  ).toBeVisible();
+
+  // Customer enters email and password
+  await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
+  await page.fill('input[name="password"]', "12345678");
+
+  await page.getByRole("button", { name: "Sign in with Credentials" }).click();
+  // Expect to see Sign-Out button after login
+
+  await page.getByRole("link", { name: "Massage" }).click();
+  // Go to the shop page (assuming we navigate to a specific shop page)
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
+
+  // มี review ขอตัวเองจริงๆ
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  await page.getByText("TeeAsCustomer3");
+  const errorText = page.getByText("You have already submitted a review.");
+
+  // เลื่อนลงไปหา element ถ้ายังไม่อยู่ในจอ
+  await errorText.scrollIntoViewIfNeeded();
+
+  // ค่อย expect ว่าเห็นแล้ว
+  await expect(errorText).toBeVisible();
+  
+  const moreButton = page.getByLabel('More');
+
+  // เลื่อนขึ้นไปหา More ก่อน ถ้ายังไม่อยู่ในจอ
+  await moreButton.scrollIntoViewIfNeeded();
+
+  // คลิกปุ่ม More
+  await moreButton.click();
+
+
+  // 2. รอเมนูแสดงผล (จริง ๆ กดแล้วเมนูมัน popup เลย)
+  const editButton = page.getByRole('menuitem', { name: 'Edit' });
+  const deleteButton = page.getByRole('menuitem', { name: 'Delete' });
+
+  await expect(editButton).toBeVisible();
+  await expect(deleteButton).toBeVisible();
+
+  // 3. กด Edit
+  await editButton.click();
+
+  await page.getByLabel('Dialog Edit Review').isVisible();
+
+  // เจอ 3 label 
+  await page.getByLabel('Rating in Edit Review').isVisible();
+  await page.getByLabel('Title in Edit Review').isVisible();
+  await page.getByLabel('Comment in Edit Review').isVisible();
+
+  await page.getByLabel('Title').fill('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+  await expect(page.getByLabel('Title')).toHaveValue('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+  // Save
+  await page.getByLabel('Save in Edit').isVisible();
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  const [dialog] = await Promise.all([
+    page.waitForEvent('dialog'), // รอ alert เด้ง
+    page.getByLabel('Save in Edit').click(), // กด Save ที่ทำให้ error
+  ]);
+  
+  // ตรวจสอบข้อความใน alert
+  expect(dialog.message()).toContain('Failed to edit review: Validation failed: header: Header can not be more than 50 characters');
+
+  
+  // กด OK บน alert
+  await dialog.accept();
+    
+});
+
+test('Customer cannot save edited review with comment longer than 250 characters', async ({ page }) => {
+  await page.getByRole("link", { name: "Sign-In" }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Credentials" })
+  ).toBeVisible();
+
+  // Customer enters email and password
+  await page.fill('input[name="email"]', "TeeCustomer3@gmail.com");
+  await page.fill('input[name="password"]', "12345678");
+
+  await page.getByRole("button", { name: "Sign in with Credentials" }).click();
+  // Expect to see Sign-Out button after login
+
+  await page.getByRole("link", { name: "Massage" }).click();
+  // Go to the shop page (assuming we navigate to a specific shop page)
+  await page.goto("http://localhost:3000/shops/67df82e11869b1292796dce8"); // เปลี่ยน URL เป็นของร้านที่ต้องการทดสอบ
+
+  // มี review ขอตัวเองจริงๆ
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  await page.getByText("TeeAsCustomer3");
+  const errorText = page.getByText("You have already submitted a review.");
+
+  // เลื่อนลงไปหา element ถ้ายังไม่อยู่ในจอ
+  await errorText.scrollIntoViewIfNeeded();
+
+  // ค่อย expect ว่าเห็นแล้ว
+  await expect(errorText).toBeVisible();
+  
+  const moreButton = page.getByLabel('More');
+
+  // เลื่อนขึ้นไปหา More ก่อน ถ้ายังไม่อยู่ในจอ
+  await moreButton.scrollIntoViewIfNeeded();
+
+  // คลิกปุ่ม More
+  await moreButton.click();
+
+
+  // 2. รอเมนูแสดงผล (จริง ๆ กดแล้วเมนูมัน popup เลย)
+  const editButton = page.getByRole('menuitem', { name: 'Edit' });
+  const deleteButton = page.getByRole('menuitem', { name: 'Delete' });
+
+  await expect(editButton).toBeVisible();
+  await expect(deleteButton).toBeVisible();
+
+  // 3. กด Edit
+  await editButton.click();
+
+  await page.getByLabel('Dialog Edit Review').isVisible();
+
+  // เจอ 3 label 
+  await page.getByLabel('Rating in Edit Review').isVisible();
+  await page.getByLabel('Title in Edit Review').isVisible();
+  await page.getByLabel('Comment in Edit Review').isVisible();
+
+  await page.getByLabel('Title').fill('aaaaa');
+  await expect(page.getByLabel('Title')).toHaveValue('aaaaa');
+  await page.getByLabel('Comment').fill('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+  await expect(page.getByLabel('Comment')).toHaveValue('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+  // Save
+  await page.getByLabel('Save in Edit').isVisible();
+  await page.waitForLoadState("networkidle"); // รอให้ network
+  const [dialog] = await Promise.all([
+    page.waitForEvent('dialog'), // รอ alert เด้ง
+    page.getByLabel('Save in Edit').click(), // กด Save ที่ทำให้ error
+  ]);
+  
+  // ตรวจสอบข้อความใน alert
+  expect(dialog.message()).toContain('Failed to edit review: Validation failed: comment: Comment can not be more than 250 characters');
+
+  
+  // กด OK บน alert
+  await dialog.accept();
+    
+});
+
 /*
 
 Test Case No.	Test Name
@@ -634,6 +930,7 @@ Test Case No.	Test Name
 
 ryu
 2	Guest cannot create a review and rating
+
 3	Guest can read reviews and ratings
 4	User can read reviews and ratings
 5	Admin can read reviews and ratings
@@ -643,10 +940,21 @@ ryu
 Tee
 7.1	Customer can edit their own review and rating (save) ✅
 7.2 7	Customer can edit their own review and rating (Cancel) ✅
-8	Customer cannot edit others' reviews and ratings ✅
+8	Customer cannot edit others reviews and ratings ✅
 9	Guest cannot edit any review and rating ✅
 10	ShopOwner cannot edit any review and rating ✅
 11	Admin cannot edit any review and rating ✅
+
+| # | ชื่อ Test | อธิบายสั้น ๆ |
+|:--|:--|:--|
+| 2 | `Customer cannot save edited review with missing header` ### Please add a header ✅
+| 3 | `Customer cannot save edited review with missing comment` ### Please add a comment ✅
+| 4 | `Customer cannot save edited review with header longer than 50 characters` ### Header can not be more than 50 characters ✅
+| 5 | `Customer cannot save edited review with comment longer than 250 characters` ### Comment can not be more than 250 characters ✅
+
+npx playwright test -g 'Customer can edit their own review and rating SAVE|Customer can edit their own review and rating CANCEL|Customer cannot edit others reviews and ratings|Guest cannot edit any review and rating|Guest cannot edit any review and rating|Guest cannot edit any review and rating|ShopOwner cannot edit any review and rating|Admin cannot edit any review and rating'
+npx playwright test -g 'Customer cannot save edited review with missing header|Customer cannot save edited review with missing comment|Customer cannot save edited review with header longer than 50 characters|Customer cannot save edited review with comment longer than 250 characters'
+
 
 12	User can delete their own review and rating
 13	User cannot delete others' reviews and ratings
@@ -658,3 +966,5 @@ Tee
 
 
 */
+
+
