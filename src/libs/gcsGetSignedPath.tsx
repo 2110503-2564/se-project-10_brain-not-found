@@ -26,7 +26,7 @@ export async function getSignedUrlForGCSPath(gcsPath: string): Promise<string> {
         const options = {
             version: 'v4' as const, // Recommended version
             action: 'read' as const,
-            expires: Date.now() + 15 * 60 * 1000, // 15 minutes expiry
+            expires: Date.now() + 30 * 60 * 1000, // 15 minutes expiry
         };
 
         // Get a v4 signed URL for reading the file

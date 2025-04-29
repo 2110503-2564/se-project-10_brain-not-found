@@ -15,7 +15,7 @@ import ServiceForm from './ServiceForm';
 
 // --- Import API functions ---
 import createShopRequest from '@/libs/createShopRequest';
-import { uploadFileToGCSAction } from '@/libs/gcsUpload';
+import { deleteFileFromGCS, uploadFileToGCSAction } from '@/libs/gcsUpload';
 import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
 
 interface CreateShopFormData {
@@ -27,7 +27,7 @@ interface CreateShopFormData {
     region: string;
     province: string;
     district: string;
-    description: string;
+    description: string; // <--- มีอยู่แล้ว
     openTime: string;
     closeTime: string;
     services: Service[];
@@ -50,7 +50,7 @@ const addShopFormFull: React.FC = () => {
       region: '',
       province: '',
       district: '',
-      description: '',
+      description: '', // <--- มีอยู่แล้ว
       openTime: '',
       closeTime: '',
       services: [],
@@ -58,7 +58,8 @@ const addShopFormFull: React.FC = () => {
       licenseDocFile: null,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // เปลี่ยน error state ให้เก็บ array ของ string ได้
+  const [errors, setErrors] = useState<string[]>([]);
 
   const [shopImagePreviewUrls, setShopImagePreviewUrls] = useState<string[]>([]);
   const [licensePreviewUrl, setLicensePreviewUrl] = useState<string | null>(null);
@@ -112,7 +113,7 @@ const addShopFormFull: React.FC = () => {
       e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
       const { name, value } = e.target;
-      setError(null);
+      setErrors([]); // Clear errors on input change
       setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -120,7 +121,7 @@ const addShopFormFull: React.FC = () => {
     const { name, files } = e.target;
     console.log(`[Debug] handleFileChange triggered for name: "${name}"`);
     console.log(`[Debug] files object received:`, files);
-    setError(null);
+    setErrors([]); // Clear errors on file change
 
     if (files && files.length > 0) {
         const fileToSet = files[0]; // ยังคงใช้สำหรับ licenseDocFile
@@ -164,13 +165,13 @@ const addShopFormFull: React.FC = () => {
 
 
   const handleAddService = (newServiceData: Omit<Service, 'id'>) => {
-      setError(null);
+      setErrors([]); // Clear errors
       const serviceToAdd: Service = { id: crypto.randomUUID(), ...newServiceData };
       setFormData((prev) => ({ ...prev, services: [...prev.services, serviceToAdd] }));
   };
 
   const handleDeleteService = (idToDelete: string) => {
-      setError(null);
+      setErrors([]); // Clear errors
       setFormData((prev) => ({
           ...prev,
           services: prev.services.filter((service) => service.id !== idToDelete),
@@ -178,7 +179,7 @@ const addShopFormFull: React.FC = () => {
   };
 
   const handleRemoveShopImage = (indexToRemove: number) => {
-      setError(null);
+      setErrors([]); // Clear errors
       setFormData((prev) => ({
           ...prev,
           shopImageFiles: prev.shopImageFiles.filter((_, index) => index !== indexToRemove),
@@ -186,7 +187,7 @@ const addShopFormFull: React.FC = () => {
   };
 
   const handleRemoveLicense = () => {
-      setError(null);
+      setErrors([]); // Clear errors
       setFormData((prev) => ({
           ...prev,
           licenseDocFile: null,
@@ -194,7 +195,7 @@ const addShopFormFull: React.FC = () => {
   };
 
   const handleClearAllShopImages = () => {
-    setError(null); // ล้าง error ถ้ามี
+    setErrors([]); // ล้าง error ถ้ามี
     setFormData((prev) => ({
         ...prev,
         shopImageFiles: [], // ตั้งค่า shopImageFiles ให้เป็น Array ว่าง
@@ -205,55 +206,71 @@ const addShopFormFull: React.FC = () => {
   // --- Submit Handler (Keep core logic, file upload part is fine) ---
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(null); // Clear error
+    setErrors([]); // Clear previous errors before validation
     setOpenConfirmDialog(true);
 };
 
   // --- Confirm and Cancel Handlers ---
   const handleConfirmSubmit = async () => {
-    setIsSubmitting(true);
-    // ... (เดิมคือ codeใน handleSubmit มาอยู่ใน handleConfirmSubmit)
-    setError(null);
-    console.log('Form data before submit:', formData); // <-- เพิ่ม log ตรวจสอบ
+    // --- 1. Validate Form Data ---
+    const validationErrors: string[] = [];
 
-    // --- Validation ---
+    // --- Authentication Check ---
+    if (status !== 'authenticated' || !session || !session.user || !session.user.token || session.user.role !== 'shopOwner') {
+        validationErrors.push('Authentication failed or insufficient permissions.');
+        // ไม่ต้อง return ทันที ให้เช็ค field อื่นๆ ต่อ
+    }
+
+    // --- Required Field Checks ---
+    if (!formData.shopName.trim()) validationErrors.push("Shop Name is required.");
+    if (!formData.phoneNumber.trim()) validationErrors.push("Phone number is required.");
+    if (!formData.shopType) validationErrors.push("Shop Type is required."); // Select ไม่ต้อง trim
+    if (!formData.address.trim()) validationErrors.push("Address is required.");
+    if (!formData.postalcode.trim()) validationErrors.push("Postal Code is required.");
+    if (!formData.region.trim()) validationErrors.push("Region is required.");
+    if (!formData.province.trim()) validationErrors.push("Province is required.");
+    if (!formData.district.trim()) validationErrors.push("District is required.");
+    if (!formData.description.trim()) validationErrors.push("Shop Description is required."); // <--- เพิ่มการตรวจสอบ description
+    if (!formData.openTime) validationErrors.push("Open Time is required."); // Time input ไม่ต้อง trim
+    if (!formData.closeTime) validationErrors.push("Close Time is required."); // Time input ไม่ต้อง trim
+
+    // --- File Checks ---
     if (formData.shopImageFiles.length === 0) {
-        setError("Please select at least one shop image.");
-        setIsSubmitting(false);
-        setOpenConfirmDialog(false); // Close dialog
-        return;
+        validationErrors.push("Please select at least one shop image.");
     }
     if (!formData.licenseDocFile) {
-        setError("Please select the certificate file.");
-        setIsSubmitting(false);
-        setOpenConfirmDialog(false);
-        return;
+        validationErrors.push("Please select the certificate file.");
     }
-    // ... other validations ...
 
-    // --- Authentication Check (ใช้ status ด้วย) ---
-    if (status !== 'authenticated' || !session || !session.user || !session.user.token || session.user.role !== 'shopOwner') {
-        setError('Authentication failed or insufficient permissions.');
-        setIsSubmitting(false);
+    // --- 2. Check if there are any validation errors ---
+    if (validationErrors.length > 0) {
+        setErrors(validationErrors); // Set all collected errors
+        setIsSubmitting(false); // Ensure submitting state is false
         setOpenConfirmDialog(false); // Close dialog
-        return;
+        console.log("Validation Errors:", validationErrors); // Log errors
+        return; // Stop submission
     }
+
+    // --- 3. If validation passes, proceed with submission ---
+    setIsSubmitting(true);
+    setErrors([]); // Clear errors state if validation passed
+    console.log('Form data before submit:', formData);
 
     let pictureUrls: string[] = [];
     let certificateUrl: string | undefined = undefined;
 
     try {
         // --- File Upload Logic ---
-        console.log('Starting file uploads...'); // <-- เพิ่ม log
-        console.log('Shop images to upload:', formData.shopImageFiles); // <-- เพิ่ม log
-        console.log('License doc to upload:', formData.licenseDocFile); // <-- เพิ่ม log
+        console.log('Starting file uploads...');
+        console.log('Shop images to upload:', formData.shopImageFiles);
+        console.log('License doc to upload:', formData.licenseDocFile);
 
         // --- 1. อัปโหลดรูปภาพร้านค้า ---
         const uploadPromises = formData.shopImageFiles.map(file => {
             const fileFormData = new FormData();
             fileFormData.append('file', file);
-            fileFormData.append('folder', 'shop_pictures/'); // ระบุ folder
-            console.log(`Preparing to upload shop image: ${file.name} to folder: shop_pictures/`); // <-- เพิ่ม log
+            fileFormData.append('folder', 'shop_pictures/');
+            console.log(`Preparing to upload shop image: ${file.name} to folder: shop_pictures/`);
             return uploadFileToGCSAction(fileFormData);
         });
         pictureUrls = await Promise.all(uploadPromises);
@@ -262,9 +279,10 @@ const addShopFormFull: React.FC = () => {
         // --- 2. อัปโหลดใบรับรอง ---
         console.log("Uploading license document...");
         const uploadFormData = new FormData();
-        uploadFormData.append('file', formData.licenseDocFile); // มั่นใจว่าไม่ null จาก validation
-        uploadFormData.append('folder', 'certificates'); // ระบุ folder
-        console.log(`Preparing to upload license: ${formData.licenseDocFile.name} to folder: certificates`); // <-- เพิ่ม log
+        // Validation ก่อนหน้าทำให้มั่นใจว่า formData.licenseDocFile ไม่ใช่ null
+        uploadFormData.append('file', formData.licenseDocFile!);
+        uploadFormData.append('folder', 'certificates');
+        console.log(`Preparing to upload license: ${formData.licenseDocFile!.name} to folder: certificates`);
         certificateUrl = await uploadFileToGCSAction(uploadFormData);
         console.log("License document uploaded successfully:", certificateUrl);
 
@@ -278,18 +296,18 @@ const addShopFormFull: React.FC = () => {
             region: formData.region,
             province: formData.province,
             district: formData.district,
-            desc: formData.description,
+            desc: formData.description, // <--- มีอยู่แล้ว
             openTime: formData.openTime,
             closeTime: formData.closeTime,
-            // ตรวจสอบว่า API ต้องการ description ใน service หรือไม่
             services: formData.services.map(({ id, ...rest }) => rest),
             picture: pictureUrls,
             certificate: certificateUrl,
         };
 
+        // Validation ก่อนหน้าทำให้มั่นใจว่า session.user มีค่า
         const User: User = {
-            _id: session.user._id,
-            name: session.user.name,
+            _id: session!.user._id,
+            name: session!.user.name,
         };
 
         const requestData: RequestItemToCreateShop = {
@@ -299,22 +317,55 @@ const addShopFormFull: React.FC = () => {
         };
 
         console.log('Submitting shop creation request:', requestData);
-        const result = await createShopRequest(session.user.token, requestData);
+        // Validation ก่อนหน้าทำให้มั่นใจว่า session.user.token มีค่า
+        const result = await createShopRequest(session!.user.token, requestData);
 
         if (result.success) {
             console.log('Shop creation request successful:', result);
+            alert("Shop creation request submitted successfully!");
             router.push('/request?status=request_submitted');
         } else {
-            throw new Error(result.message || 'Failed to submit shop creation request.');
+            // Handle API error specifically (different from validation errors)
+            setErrors([result.message || 'Failed to submit shop creation request.']);
+            // Attempt to delete uploaded files if API call failed
+            throw new Error(result.message || 'API submission failed.'); // Throw to trigger cleanup
         }
     } catch (err) {
-        console.error('Detailed submission failed:', err); // <-- เพิ่ม log ที่ละเอียดขึ้น
-        if (err instanceof AggregateError) {
-            setError(`One or more file uploads failed: ${err.errors.map(e => e instanceof Error ? e.message : String(e)).join(', ')}`);
-        } else {
-            setError(err instanceof Error ? err.message : 'An unknown error occurred.');
+        console.error('Detailed submission failed:', err);
+
+        // --- Logic การลบไฟล์ที่อัปโหลดไปแล้ว ถ้าเกิด Error หลัง Upload ---
+        if (pictureUrls.length > 0 || certificateUrl) {
+            console.warn("Submission failed after file upload. Attempting to delete uploaded files...");
+            const filesToDelete = [...pictureUrls];
+            if (certificateUrl) {
+                filesToDelete.push(certificateUrl);
+            }
+
+            try {
+                await Promise.allSettled(filesToDelete.map(async (pathOrUrl) => {
+                    try {
+                        await deleteFileFromGCS(pathOrUrl);
+                        console.log(`Successfully deleted orphaned file: ${pathOrUrl}`);
+                    } catch (deleteError) {
+                        console.error(`Failed to delete orphaned file ${pathOrUrl}:`, deleteError);
+                    }
+                }));
+                console.log("Finished attempting to delete orphaned files.");
+            } catch (cleanupError) {
+                console.error("Error during file cleanup process:", cleanupError);
+            }
         }
-        // *** พิจารณา Logic ลบไฟล์ที่ Upload ไปแล้วถ้า API ล้มเหลว ***
+
+        // Set error state based on the caught error, only if errors state is currently empty
+        // (to avoid overwriting specific API errors with generic catch messages)
+        if (errors.length === 0) {
+             if (err instanceof AggregateError) {
+                setErrors([`One or more file uploads failed: ${err.errors.map(e => e instanceof Error ? e.message : String(e)).join(', ')}`]);
+            } else {
+                setErrors([err instanceof Error ? err.message : 'An unknown error occurred during submission.']);
+            }
+        }
+
     } finally {
         setIsSubmitting(false);
         setOpenConfirmDialog(false); // ปิด Dialog เสมอ
@@ -376,7 +427,7 @@ const addShopFormFull: React.FC = () => {
                           type="text" id="shopName" name="shopName"
                           placeholder="Shop Name" required
                           value={formData.shopName} onChange={handleInputChange}
-                          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                          className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${errors.some(e => e.includes("Shop Name")) ? 'border-red-500' : ''}`}
                       />
                       </div>
                       {/* Phone Number */}
@@ -388,7 +439,7 @@ const addShopFormFull: React.FC = () => {
                           type="tel" id="phoneNumber" name="phoneNumber"
                           placeholder="Phone number" required
                           value={formData.phoneNumber} onChange={handleInputChange}
-                          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                          className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${errors.some(e => e.includes("Phone number")) ? 'border-red-500' : ''}`}
                       />
                       </div>
                       {/* Type Shop */}
@@ -399,7 +450,7 @@ const addShopFormFull: React.FC = () => {
                       <select
                           id="shopType" name="shopType" required
                           value={formData.shopType} onChange={handleInputChange}
-                          className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-white"
+                          className={`shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-white ${errors.some(e => e.includes("Shop Type")) ? 'border-red-500' : ''}`}
                       >
                           <option value="" disabled>-- Select Type --</option>
                           <option value="Thai Massage">Thai Massage</option>
@@ -422,41 +473,46 @@ const addShopFormFull: React.FC = () => {
                           {/* Address */}
                           <div className="md:col-span-2">
                           <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="address">Address <span className="text-red-500">*</span></label>
-                          <input type="text" id="address" name="address" placeholder="Address" required value={formData.address} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                          <input type="text" id="address" name="address" placeholder="Address" required value={formData.address} onChange={handleInputChange} className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${errors.some(e => e.includes("Address")) ? 'border-red-500' : ''}`} />
                           </div>
                           {/* Postal Code */}
                           <div>
                           <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="postalcode">Postal Code <span className="text-red-500">*</span></label>
-                          <input type="text" id="postalcode" name="postalcode" placeholder="Postal Code" required value={formData.postalcode} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                          <input type="text" id="postalcode" name="postalcode" placeholder="Postal Code" required value={formData.postalcode} onChange={handleInputChange} className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${errors.some(e => e.includes("Postal Code")) ? 'border-red-500' : ''}`} />
                           </div>
                           {/* Region */}
                           <div>
                           <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="region">Region <span className="text-red-500">*</span></label>
-                          <input type="text" id="region" name="region" placeholder="Region" required value={formData.region} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                          <input type="text" id="region" name="region" placeholder="Region" required value={formData.region} onChange={handleInputChange} className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${errors.some(e => e.includes("Region")) ? 'border-red-500' : ''}`} />
                           </div>
                           {/* Province */}
                           <div>
                           <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="province">Province <span className="text-red-500">*</span></label>
-                          <input type="text" id="province" name="province" placeholder="Province" required value={formData.province} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                          <input type="text" id="province" name="province" placeholder="Province" required value={formData.province} onChange={handleInputChange} className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${errors.some(e => e.includes("Province")) ? 'border-red-500' : ''}`} />
                           </div>
                           {/* District */}
                           <div>
                           <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="district">District <span className="text-red-500">*</span></label>
-                          <input type="text" id="district" name="district" placeholder="District" required value={formData.district} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                          <input type="text" id="district" name="district" placeholder="District" required value={formData.district} onChange={handleInputChange} className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${errors.some(e => e.includes("District")) ? 'border-red-500' : ''}`} />
                           </div>
                       </div>
                   </div>
 
                   {/* Description Group */}
                   <div className="border p-4 rounded-md flex flex-col">
-                      <h3 className="text-lg font-semibold mb-4 text-gray-800">Description</h3> {/* <--- แก้ไข Title */}
-                      <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">Shop Description</label>
+                      <h3 className="text-lg font-semibold mb-4 text-gray-800">Description</h3>
+                      {/* --- เพิ่ม * สีแดง และ required --- */}
+                      <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">
+                          Shop Description <span className="text-red-500">*</span>
+                      </label>
                       <textarea
                           id="description" name="description"
-                          placeholder="Shop description (optional)"
+                          placeholder="Shop description" // <--- เอา (optional) ออก
                           rows={12}
+                          required // <--- เพิ่ม required
                           value={formData.description} onChange={handleInputChange}
-                          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline resize-none mb-4"
+                          // <--- เพิ่ม class เช็ค error ---
+                          className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline resize-none mb-4 ${errors.some(e => e.includes("Shop Description")) ? 'border-red-500' : ''}`}
                       ></textarea>
                   </div>
               </div>
@@ -470,7 +526,7 @@ const addShopFormFull: React.FC = () => {
                           <input
                           type="time" id="openTime" name="openTime" required
                           value={formData.openTime} onChange={handleInputChange}
-                          className="shadow appearance-none border rounded w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                          className={`shadow appearance-none border rounded w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${errors.some(e => e.includes("Open Time")) ? 'border-red-500' : ''}`}
                           />
                       </div>
                       <div>
@@ -478,7 +534,7 @@ const addShopFormFull: React.FC = () => {
                           <input
                           type="time" id="closeTime" name="closeTime" required
                           value={formData.closeTime} onChange={handleInputChange}
-                          className="shadow appearance-none border rounded w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                          className={`shadow appearance-none border rounded w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${errors.some(e => e.includes("Close Time")) ? 'border-red-500' : ''}`}
                           />
                       </div>
                   </div>
@@ -486,7 +542,7 @@ const addShopFormFull: React.FC = () => {
 
 
               {/* --- Section: Shop Images --- */}
-              <div className="border p-4 rounded-md">
+              <div className={`border p-4 rounded-md ${errors.some(e => e.includes("shop image")) ? 'border-red-500' : ''}`}>
                   <h3 className="text-lg font-semibold mb-4 text-gray-800">Shop Images:</h3>
                   {/* Preview Area */}
                   {shopImagePreviewUrls.length > 0 && (
@@ -519,11 +575,11 @@ const addShopFormFull: React.FC = () => {
                   <FileUploadInput
                       id="shopImageFiles"
                       name="shopImageFiles"
-                      label="Add/Replace Shop Images (Select multiple)"
+                      label="Add/Replace Shop Images (up to 5 image)"
                       accept="image/jpeg, image/png, image/gif"
                       onChange={handleFileChange}
                       multiple={true}
-                      required={formData.shopImageFiles.length === 0}
+                      required={formData.shopImageFiles.length === 0} // Keep required for browser validation hint
                   />
 
                   {formData.shopImageFiles.length > 0 && (
@@ -538,7 +594,7 @@ const addShopFormFull: React.FC = () => {
               </div>
 
               {/* --- Section: Certificate --- */}
-              <div className="border p-4 rounded-md">
+              <div className={`border p-4 rounded-md ${errors.some(e => e.includes("certificate")) ? 'border-red-500' : ''}`}>
                   <h3 className="text-lg font-semibold mb-4 text-gray-800">Certificate:</h3>
                    {/* Preview Area */}
                    {licensePreviewUrl && formData.licenseDocFile && (
@@ -565,18 +621,18 @@ const addShopFormFull: React.FC = () => {
                           </div>
                       </div>
                    )}
-                
+
                       <FileUploadInput
                           id="licenseDocFile"
                           name="licenseDocFile"
                           label="Add Certificate"
                           accept=".pdf, image/jpeg, image/png"
                           onChange={handleFileChange}
-                          fileName={null} 
-                          required={!formData.licenseDocFile}
+                          fileName={null}
+                          required={!formData.licenseDocFile} // Keep required for browser validation hint
                           multiple={false}
                       />
-             
+
               </div>
 
               {/* --- Section: Services offered --- */}
@@ -599,25 +655,17 @@ const addShopFormFull: React.FC = () => {
                   </button>
               </div>
               </form>
-              
+
+              {/* --- Error Display Area (ปรับปรุง) --- */}
               <div className="py-6">
-              {error && (
+              {errors.length > 0 && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-                    <strong className="font-bold">Error:</strong>
-                    {typeof error === 'string' && error.startsWith('Request validation failed:') ? (
-                        // ใช้ Regex ในการ split และกรองค่าว่างออก
-                        <ul className="list-disc list-inside mt-1">
-                            {error.substring('Request validation failed:'.length)
-                                  .split(/\s*,\s*/) // <--- แก้ไขตรงนี้: ใช้ Regex แยกด้วย , โดยไม่สนช่องว่างรอบๆ
-                                  .filter(msg => msg.trim() !== '') // กรองข้อความว่างๆ ที่อาจเกิดจากการ split
-                                  .map((errMsg, index) => (
-                                      <li key={index}>{errMsg.replace(/^shop\./, '').trim()}</li>
-                                  ))
-                            }
-                        </ul>
-                    ) : typeof error === 'string' ? (
-                        <span className="block sm:inline ml-1">{error}</span>
-                    ) : null }
+                    <strong className="font-bold">Please fix the following errors:</strong>
+                    <ul className="list-disc list-inside mt-1">
+                        {errors.map((errMsg, index) => (
+                            <li key={index}>{errMsg}</li>
+                        ))}
+                    </ul>
                 </div>
             )}
           </div>

@@ -8,6 +8,8 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useState } from "react";
 import { useRouter } from 'next/navigation';
 import { useSession } from "next-auth/react";
+import getRequest from "@/libs/getRequest";
+import { deleteFileFromGCS } from "@/libs/gcsUpload";
 
 interface ShopOwnerRequestMenuProps {
   requestId: string;
@@ -39,15 +41,54 @@ export default function ShopOwnerRequestMenu({ requestId }: ShopOwnerRequestMenu
   };
 
   const handleConfirmCancel = async () => {
-    setIsSubmitting(true);
-    try {
-      const token = session?.user.token;
+  setIsSubmitting(true);
+      let requestData: RequestData; // เก็บข้อมูล request ที่ fetch มา
   
-      if (!token) {
-        throw new Error("No token found in session. Please login again.");
-      }
+      try {
+          const token = session?.user.token;
+          if (!token) {
+              throw new Error("No token found in session. Please login again.");
+          }
   
-      console.log("Trying to delete request ID:", requestId);
+          console.log("Step 1: Fetching request data for ID:", requestId);
+          // --- 1. ดึงข้อมูล Request ---
+          const requestResult = await getRequest(requestId, token);
+          if (!requestResult.success || !requestResult.data) {
+              throw new Error("Failed to fetch request details before deletion.");
+          }
+          requestData = requestResult.data;
+          if (!requestData.shop) {
+            throw new Error("Shop data is missing from the request.");
+          }
+          console.log("Request data fetched:", requestData);
+  
+          // --- 2. เตรียม Path และเรียก deleteFileFromGCS ---
+          const picturePaths = requestData.shop.picture || [];
+          const certificatePath = requestData.shop?.certificate ;
+  
+          const pathsToDelete = [...picturePaths];
+          if (certificatePath) {
+              pathsToDelete.push(certificatePath);
+          }
+  
+          if (pathsToDelete.length > 0) {
+              console.log("Step 2: Attempting to delete GCS files:", pathsToDelete);
+              await Promise.allSettled( // ใช้ allSettled เพื่อให้ทำงานต่อแม้บางไฟล์จะลบไม่สำเร็จ
+                  pathsToDelete.map(async (gcsPath) => {
+                      try {
+                          await deleteFileFromGCS(gcsPath);
+                          console.log(`Successfully deleted GCS file: ${gcsPath}`);
+                      } catch (deleteError) {
+                          // Log error แต่ไม่ throw เพื่อให้ลบ DB ต่อได้
+                          console.error(`Failed to delete GCS file ${gcsPath}:`, deleteError);
+                      }
+                  })
+              );
+              console.log("Finished attempting GCS file deletions.");
+          } else {
+              console.log("Step 2: No GCS files associated with this request to delete.");
+          }
+  
   
       const res = await fetch(`${process.env.BACKEND_URL}/api/v1/requests/${requestId}`, {  // <-- correct
         method: 'DELETE',
@@ -62,7 +103,9 @@ export default function ShopOwnerRequestMenu({ requestId }: ShopOwnerRequestMenu
         console.error("Backend error response:", errorResponse);
         throw new Error('Failed to cancel request');
       }
-  
+      
+      alert("Request canceled successfully!");
+
       router.refresh();
       window.location.reload();
     } catch (error) {
@@ -105,7 +148,7 @@ export default function ShopOwnerRequestMenu({ requestId }: ShopOwnerRequestMenu
         <DialogActions>
           <Button onClick={(e) => {e.stopPropagation();setOpenCancelDialog(false);}} disabled={isSubmitting}>Back</Button>
           <Button color="error" onClick={(e)=>{e.stopPropagation();handleConfirmCancel();}} disabled={isSubmitting}>
-            {isSubmitting ? 'Cancelling...' : 'Cancel'}
+            {isSubmitting ? 'Cancelling...' : 'Confirm Cancel'}
           </Button>
         </DialogActions>
       </Dialog>

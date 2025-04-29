@@ -130,8 +130,8 @@ export function ReviewMenu({
           <DialogContentText>This will permanently delete the review.</DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => toggleDeleteDialog(false)}>Cancel</Button>
-          <Button color="error" onClick={handleConfirmDelete}>Delete</Button>
+          <Button aria-label="Cancel in Delete"  onClick={() => toggleDeleteDialog(false)}>Cancel</Button>
+          <Button aria-label="Delete in Delete"  color="error" onClick={handleConfirmDelete}>Delete</Button>
         </DialogActions>
       </Dialog>
 

@@ -1,4 +1,4 @@
-// src/components/addShopFormFull.tsx
+// src/components/EditRequestForm.tsx
 'use client';
 import {
   IconButton, Menu, MenuItem, Dialog, DialogTitle, DialogContent,
@@ -30,7 +30,7 @@ interface ShopFormData {
     region: string;
     province: string;
     district: string;
-    description: string;
+    description: string; // <--- มีอยู่แล้ว
     openTime: string;
     closeTime: string;
     services: Service[]; // Keep client-side ID for list management
@@ -39,19 +39,6 @@ interface ShopFormData {
     // oldCertImageURL: String[];
     licenseDocFile: File | null; // Keep as single file for now, adjust if needed
 }
-
-const extractGCSFilePath = (fullUrl: string): string => {
-  const baseUrl = `https://storage.googleapis.com/${process.env.NEXT_PUBLIC_GCS_BUCKET_NAME || 'brain_not_found_app'}/`; 
-  if (fullUrl.startsWith(baseUrl)) {
-    return fullUrl.substring(baseUrl.length);
-  }
-  // Handle cases where URL might already be just the path
-  if (!fullUrl.startsWith('http')) {
-      return fullUrl;
-  }
-  console.warn("Could not extract GCS path from URL:", fullUrl);
-  return fullUrl; // Fallback
-};
 
 interface EditShopFormProps {
     requestId: string;
@@ -70,7 +57,7 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
     region: '',
     province: '',
     district: '',
-    description: '',
+    description: '', // <--- มีอยู่แล้ว
     openTime: '',
     closeTime: '',
     services: [],
@@ -86,6 +73,8 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
     const [currentCertImageURLs, setCurrentCertImageURLs] = useState<string[]>([]); // เก็บเป็น Array เผื่อกรณี Error
     const [deletedImageURLs, setDeletedImageURLs] = useState<string[]>([]);
     const [deletedCertImageURLs, setDeletedCertImageURLs] = useState<string[]>([]);
+
+    const [originalCertificatePath, setOriginalCertificatePath] = useState<string | null>(null);
 
     // State สำหรับ Preview ไฟล์ *ใหม่*
     const [shopImagePreviewUrls, setShopImagePreviewUrls] = useState<string[]>([]);
@@ -133,7 +122,7 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
                     region: result.data.shop?.region || '',
                     province: result.data.shop?.province || '',
                     district: result.data.shop?.district || '',
-                    description: result.data.shop?.desc || '',
+                    description: result.data.shop?.desc || '', // <--- มีอยู่แล้ว
                     openTime: result.data.shop?.openTime || '',
                     closeTime: result.data.shop?.closeTime || '',
                     // เพิ่ม ID ชั่วคราวให้ service เพื่อใช้ใน ServiceList
@@ -141,12 +130,25 @@ const EditShopRequestForm: React.FC<EditShopFormProps> = ({requestId}) => {
                     shopImageFiles: [], // เริ่มต้นไฟล์ใหม่เป็น Array ว่าง
                     licenseDocFile: null, // เริ่มต้นไฟล์ใหม่เป็น null
                 });
-                
-                const CertificateURL = await getSignedUrlForGCSPath(result.data.shop.certificate);
-                
-                // ตั้งค่า State สำหรับไฟล์เดิม
+
+                const certPath = result.data.shop?.certificate;
+                setOriginalCertificatePath(certPath || null);
+
+                let certificateSignedUrl: string | null = null;
+                if (certPath) {
+                    try {
+                        // ตรวจสอบเบื้องต้นว่า path ที่ได้มาเป็น URL อยู่แล้วหรือไม่
+                        if (certPath.startsWith('http')) {
+                            console.warn("Fetched certificate path looks like a URL:", certPath);
+                            // อาจจะต้องมี logic เพิ่มเติมเพื่อดึง path จริงๆ ออกมา
+                        }
+                        certificateSignedUrl = await getSignedUrlForGCSPath(certPath);
+                    } catch (err) {
+                        console.error("Failed to get signed URL for certificate:", err);
+                    }
+                }
+                setCurrentCertImageURLs(certificateSignedUrl ? [certificateSignedUrl] : []); // เก็บ signed URL สำหรับแสดงผล
                 setCurrentShopImageURLs(result.data.shop?.picture || []);
-                setCurrentCertImageURLs(CertificateURL ? [CertificateURL] : []);
                 setDeletedImageURLs([]); // Reset deleted lists
                 setDeletedCertImageURLs([]);
 
@@ -323,27 +325,53 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
     event.preventDefault();
     setError(null);
 
-    // --- Validation (ปรับปรุง) ---
-    const totalCurrentImages = currentShopImageURLs.length + formData.shopImageFiles.length;
-    if (totalCurrentImages < 1 || totalCurrentImages > 5) {
-        setError(`You must have between 1 and 5 shop images (Current: ${currentShopImageURLs.length}, New: ${formData.shopImageFiles.length}).`);
-        return; // ใช้ return แทน throw Error ใน validation เริ่มต้น
-    }
-
-    const totalCurrentCert = currentCertImageURLs.length + (formData.licenseDocFile ? 1 : 0);
-    if (totalCurrentCert !== 1) {
-        setError(`You must have exactly 1 certificate (Current: ${currentCertImageURLs.length}, New: ${formData.licenseDocFile ? 1 : 0}).`);
-        return;
-    }
-
     // --- Authentication Check ---
     if (!session || !session.user || !session.user.token || session.user.role !== 'shopOwner') {
         setError('Authentication failed or insufficient permissions.');
       return;
     }
+
+    // --- Validation (ปรับปรุง) ---
+    const validationErrors: string[] = []; // ใช้ Array เก็บ Error เหมือนหน้า Add
+
+    // --- Required Field Checks ---
+    if (!formData.shopName.trim()) validationErrors.push("Shop Name is required.");
+    if (!formData.phoneNumber.trim()) validationErrors.push("Phone number is required.");
+    if (!formData.shopType) validationErrors.push("Shop Type is required.");
+    if (!formData.address.trim()) validationErrors.push("Address is required.");
+    if (!formData.postalcode.trim()) validationErrors.push("Postal Code is required.");
+    if (!formData.region.trim()) validationErrors.push("Region is required.");
+    if (!formData.province.trim()) validationErrors.push("Province is required.");
+    if (!formData.district.trim()) validationErrors.push("District is required.");
+    if (!formData.description.trim()) validationErrors.push("Shop Description is required."); // <--- เพิ่มการตรวจสอบ description
+    if (!formData.openTime) validationErrors.push("Open Time is required.");
+    if (!formData.closeTime) validationErrors.push("Close Time is required.");
+
+    // --- File Checks ---
+    const totalCurrentImages = currentShopImageURLs.length + formData.shopImageFiles.length;
+    if (totalCurrentImages < 1) {
+        validationErrors.push(`Please select at least one shop image.`);
+    } else if (totalCurrentImages > 5) {
+        validationErrors.push(`Maximum 5 shop images allowed (Current: ${currentShopImageURLs.length}, New: ${formData.shopImageFiles.length}).`);
+    }
+
+    const totalCurrentCert = currentCertImageURLs.length + (formData.licenseDocFile ? 1 : 0);
+    if (totalCurrentCert !== 1) {
+        validationErrors.push(`You must have exactly 1 certificate (Current: ${currentCertImageURLs.length}, New: ${formData.licenseDocFile ? 1 : 0}).`);
+    }
+
+    // --- Check if there are any validation errors ---
+    if (validationErrors.length > 0) {
+        // รวม error เป็น string เดียว คั่นด้วย ", " (หรือจะแสดงเป็น list ก็ได้)
+        setError(`Validation failed: ${validationErrors.join(', ')}`);
+        console.log("Validation Errors (Edit):", validationErrors);
+        return; // Stop submission
+    }
+
+    // --- ถ้าผ่าน Validation ---
     setOpenConfirmDialog(true);
     };
-    
+
 
     const handleConfirmEdit = async () => {
     if (!session || !session.user || !session.user.token || session.user.role !== 'shopOwner') {
@@ -351,12 +379,13 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
         setOpenConfirmDialog(false);
         return;
     }
-    
+
     setIsReallySubmitting(true);
     setError(null);
 
     let uploadedNewPictureUrls: string[] = [];
     let uploadedNewCertificateUrl: string | undefined = undefined;
+    let pathsToDeleteOnGCS: string[] = [];
 
     try {
        // --- 1. อัปโหลดไฟล์ *ใหม่* (ถ้ามี) ---
@@ -381,34 +410,30 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                 console.log("New license document uploaded:", uploadedNewCertificateUrl);
             }
 
-      // --- 2. ลบไฟล์ *เก่า* ที่ถูก Mark ไว้ ---
-      const allUrlsToDelete = [...deletedImageURLs, ...deletedCertImageURLs];
-      if (allUrlsToDelete.length > 0) {
-          console.log("Deleting marked old files:", allUrlsToDelete);
-          await Promise.all(allUrlsToDelete.map(async (url) => {
-              try {
-                  const filePath = extractGCSFilePath(url);
-                  if (filePath) { // Ensure filePath is valid before attempting deletion
-                    await deleteFileFromGCS(filePath);
-                    console.log(`Successfully deleted: ${filePath}`);
-                  } else {
-                    console.warn(`Skipping deletion for invalid path derived from URL: ${url}`);
-                  }
-              } catch (deleteError) {
-                // Log individual deletion errors but continue trying others
-                console.error(`Failed to delete file ${url}:`, deleteError);
-                // Optionally: Collect failed deletions to inform the user
-              }
-          }));
-          console.log("Finished attempting deletions.");
-      }
-    
       // --- 3. เตรียมข้อมูลสำหรับ API ---
       // รวม URL รูปภาพ: รูปเดิมที่เหลืออยู่ + รูปใหม่ที่อัปโหลด
       const finalPictureUrls = [...currentShopImageURLs, ...uploadedNewPictureUrls];
       // เลือก URL ใบรับรอง: อันใหม่ที่อัปโหลด หรืออันเดิมที่เหลืออยู่
-      const finalCertificateUrl = uploadedNewCertificateUrl ?? currentCertImageURLs[0] ?? undefined;
+      let finalCertificatePath: string | undefined = undefined;
 
+      if (uploadedNewCertificateUrl) {
+        // กรณีที่ 1: มีการอัปโหลดไฟล์ใหม่ -> ใช้ path ใหม่, ลบ path เดิม (ถ้ามี)
+        finalCertificatePath = uploadedNewCertificateUrl;
+        if (originalCertificatePath) {
+            // เพิ่ม path เดิมใน list ที่จะลบออกจาก GCS
+            pathsToDeleteOnGCS.push(originalCertificatePath);
+        }
+    } else if (originalCertificatePath) {
+        // กรณีที่ 2: ไม่มีไฟล์ใหม่ -> ใช้ path เดิม (Validation ทำให้มั่นใจว่าอันเดิมไม่ได้ถูกลบ)
+        finalCertificatePath = originalCertificatePath;
+        // ไม่ต้องเพิ่ม originalCertificatePath ใน pathsToDeleteOnGCS
+    } else {
+        // กรณีนี้ไม่ควรเกิดขึ้น ถ้า Validation ทำงานถูกต้อง (totalCurrentCert === 1)
+        console.error("Error: Inconsistent state - No new certificate and no original path found after validation passed.");
+        throw new Error("Could not determine the final certificate path due to inconsistent state.");
+    }
+
+    // --- 3. เตรียมข้อมูลสำหรับ API (ใช้เฉพาะ Path) ---
       const shopData: ShopItemForRequest = {
           name: formData.shopName,
           tel: formData.phoneNumber,
@@ -418,12 +443,12 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
           region: formData.region,
           province: formData.province,
           district: formData.district,
-          desc: formData.description,
+          desc: formData.description, // <--- มีอยู่แล้ว
           openTime: formData.openTime,
           closeTime: formData.closeTime,
           services: formData.services.map(({ id, ...rest }) => rest), // เอา client-side id ออก
           picture: finalPictureUrls,
-          certificate: finalCertificateUrl,
+          certificate: finalCertificatePath,
       };
 
       const User: User = {
@@ -434,43 +459,101 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
       const requestData: RequestItemToCreateShop = {
         shop: shopData,
         user: User,
-        requestType: 'create',
+        requestType: 'create', // Backend อาจจะเปลี่ยนเป็น 'edit' ให้เอง หรือเราส่ง 'edit' ไปเลยก็ได้
         // status, _id, createdAt,Reason edited will be set by backend
       };
 
-      // --- 4. Call createShopRequest API ---
-      console.log('Submitting shop creation request:', requestData);
+      // --- 4. Call editShopRequest API ---
+      console.log('Submitting shop edit request:', requestData);
       const result = await editShopRequest(session.user.token, requestData, requestId);
 
+
       if (result.success) {
-        console.log('Shop creation request successful:', result);
-        router.push('/request?status=request_submitted');
+        console.log('Shop edit request successful:', result);
+
+        // --- 5. ลบไฟล์ *เก่า* ที่ถูก Mark ไว้ (ทำหลัง API สำเร็จ) ---
+        const allUrlsToDelete = [...deletedImageURLs, ...deletedCertImageURLs];
+        if (allUrlsToDelete.length > 0) {
+            console.log("Deleting marked old files:", allUrlsToDelete);
+            await Promise.all(allUrlsToDelete.map(async (url) => {
+                try {
+                    // Assuming the URL is the full GCS path or can be derived
+                    // You might need a helper function to extract the path from the URL if needed
+                    const filePath = url; // Adjust if URL needs parsing
+                    if (filePath) {
+                        await deleteFileFromGCS(filePath);
+                        console.log(`Successfully deleted: ${filePath}`);
+                    } else {
+                        console.warn(`Skipping deletion for invalid path derived from URL: ${url}`);
+                    }
+                } catch (deleteError) {
+                    console.error(`Failed to delete file ${url}:`, deleteError);
+                    // Optionally: Collect failed deletions to inform the user, but don't block success flow
+                }
+            }));
+            console.log("Finished attempting deletions.");
+        }
+        if (pathsToDeleteOnGCS.length > 0) {
+            console.log("Deleting marked old files from GCS:", pathsToDeleteOnGCS);
+            await Promise.all(pathsToDeleteOnGCS.map(async (path) => {
+                try {
+                    if (path) {
+                        await deleteFileFromGCS(path);
+                        console.log(`Successfully deleted from GCS: ${path}`);
+                    }
+                } catch (deleteError) {
+                    console.error(`Failed to delete file ${path} from GCS:`, deleteError);
+                }
+            }));
+            console.log("Finished attempting GCS deletions.");
+        }
+        
+        alert("Shop edit request submitted successfully!");
+        
+        router.push('/request?status=request_submitted'); // Redirect after successful edit and deletion
       } else {
-        throw new Error(result.message || 'Failed to submit shop creation request.');
+        // If API call fails, throw error to trigger cleanup of *newly* uploaded files
+        throw new Error(result.message || 'Failed to submit shop edit request.');
       }
+
     } catch (err) {
       console.error('Submission failed:', err);
-      // More specific error handling for Promise.all failures
+
+      // --- Cleanup: ลบไฟล์ *ใหม่* ที่อัปโหลดไปแล้ว ถ้าเกิด Error ---
+      if (uploadedNewPictureUrls.length > 0 || uploadedNewCertificateUrl) {
+        console.warn("Submission failed after new file upload. Attempting to delete newly uploaded files...");
+        const newFilesToDelete = [...uploadedNewPictureUrls];
+        if (uploadedNewCertificateUrl) {
+            newFilesToDelete.push(uploadedNewCertificateUrl);
+        }
+
+        try {
+            await Promise.allSettled(newFilesToDelete.map(async (pathOrUrl) => {
+                try {
+                    await deleteFileFromGCS(pathOrUrl);
+                    console.log(`Successfully deleted orphaned new file: ${pathOrUrl}`);
+                } catch (deleteError) {
+                    console.error(`Failed to delete orphaned new file ${pathOrUrl}:`, deleteError);
+                }
+            }));
+            console.log("Finished attempting to delete orphaned new files.");
+        } catch (cleanupError) {
+            console.error("Error during new file cleanup process:", cleanupError);
+        }
+    }
+
+      // Set error message for the user
       if (err instanceof AggregateError) {
            setError(`One or more file uploads failed: ${err.errors.map(e => e instanceof Error ? e.message : String(e)).join(', ')}`);
       } else {
-           setError(err instanceof Error ? err.message : 'An unknown error occurred.');
+           setError(err instanceof Error ? err.message : 'An unknown error occurred during submission.');
       }
     } finally {
         setIsReallySubmitting(false);
-        setOpenConfirmDialog(false); 
+        setOpenConfirmDialog(false);
     }
   };
 
-  // --- JSX ---
-//   if (!session || session.user.role !== 'shopOwner') {
-//       // Consider showing a loading state while session is undefined
-//       return (
-//           <div className="text-center my-10">
-//               <p className="text-red-500 text-lg">Access Denied. You must be a Shop Owner to access this page.</p>
-//           </div>
-//       );
-//   }
   // --- JSX ---
     if (isLoadingData || status === 'loading') {
         return <div className="text-center my-10"><p>Loading...</p></div>; // แสดง Loading
@@ -481,12 +564,11 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
         return <div className="text-center my-10"><p className="text-red-500">Access Denied.</p></div>;
   }
 
-  // // Function to display selected file names for multiple files
-  // const displaySelectedFileNames = (files: File[]): string => {
-  //     if (files.length === 0) return '';
-  //     if (files.length === 1) return files[0].name;
-  //     return `${files.length} files selected`;
-  // }
+  // Helper function to check if a specific field has an error
+  const hasError = (fieldName: string): boolean => {
+    return !!error && error.toLowerCase().includes(fieldName.toLowerCase());
+  };
+
 
   return (
     <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md max-w-4xl mx-auto my-8">
@@ -510,7 +592,7 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                         type="text" id="shopName" name="shopName"
                         placeholder="Shop Name" required
                         value={formData.shopName} onChange={handleInputChange}
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${hasError("Shop Name") ? 'border-red-500' : ''}`}
                     />
                     </div>
                     {/* Phone Number */}
@@ -522,7 +604,7 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                         type="tel" id="phoneNumber" name="phoneNumber"
                         placeholder="Phone number" required
                         value={formData.phoneNumber} onChange={handleInputChange}
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${hasError("Phone number") ? 'border-red-500' : ''}`}
                     />
                     </div>
                     {/* Type Shop */}
@@ -533,7 +615,7 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                     <select
                         id="shopType" name="shopType" required
                         value={formData.shopType} onChange={handleInputChange}
-                        className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-white"
+                        className={`shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-white ${hasError("Shop Type") ? 'border-red-500' : ''}`}
                     >
                         <option value="" disabled>-- Select Type --</option>
                         <option value="Thai Massage">Thai Massage</option>
@@ -554,27 +636,27 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                         {/* Address */}
                         <div className="md:col-span-2">
                         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="address">Address <span className="text-red-500">*</span></label>
-                        <input type="text" id="address" name="address" placeholder="Address" required value={formData.address} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                        <input type="text" id="address" name="address" placeholder="Address" required value={formData.address} onChange={handleInputChange} className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${hasError("Address") ? 'border-red-500' : ''}`} />
                         </div>
                         {/* Postal Code */}
                         <div>
                         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="postalcode">Postal Code <span className="text-red-500">*</span></label>
-                        <input type="text" id="postalcode" name="postalcode" placeholder="Postal Code" required value={formData.postalcode} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                        <input type="text" id="postalcode" name="postalcode" placeholder="Postal Code" required value={formData.postalcode} onChange={handleInputChange} className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${hasError("Postal Code") ? 'border-red-500' : ''}`} />
                         </div>
                         {/* Region */}
                         <div>
                         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="region">Region <span className="text-red-500">*</span></label>
-                        <input type="text" id="region" name="region" placeholder="Region" required value={formData.region} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                        <input type="text" id="region" name="region" placeholder="Region" required value={formData.region} onChange={handleInputChange} className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${hasError("Region") ? 'border-red-500' : ''}`} />
                         </div>
                         {/* Province */}
                         <div>
                         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="province">Province <span className="text-red-500">*</span></label>
-                        <input type="text" id="province" name="province" placeholder="Province" required value={formData.province} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                        <input type="text" id="province" name="province" placeholder="Province" required value={formData.province} onChange={handleInputChange} className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${hasError("Province") ? 'border-red-500' : ''}`} />
                         </div>
                         {/* District */}
                         <div>
                         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="district">District <span className="text-red-500">*</span></label>
-                        <input type="text" id="district" name="district" placeholder="District" required value={formData.district} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                        <input type="text" id="district" name="district" placeholder="District" required value={formData.district} onChange={handleInputChange} className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${hasError("District") ? 'border-red-500' : ''}`} />
                         </div>
                     </div>
                 </div>
@@ -582,13 +664,18 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                 {/* Description Group */}
                 <div className="border p-4 rounded-md flex flex-col">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Description</h3>
-                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">Shop Description</label>
+                    {/* --- เพิ่ม * สีแดง และ required --- */}
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">
+                        Shop Description <span className="text-red-500">*</span>
+                    </label>
                     <textarea
                         id="description" name="description"
-                        placeholder="Shop description (optional)"
+                        placeholder="Shop description" // <--- เอา (optional) ออก
                         rows={12}
+                        required // <--- เพิ่ม required
                         value={formData.description} onChange={handleInputChange}
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline resize-none mb-4"
+                        // <--- เพิ่ม class เช็ค error ---
+                        className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline resize-none mb-4 ${hasError("Shop Description") ? 'border-red-500' : ''}`}
                     ></textarea>
                 </div>
             </div>
@@ -601,7 +688,7 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                         <input
                         type="time" id="openTime" name="openTime" required
                         value={formData.openTime} onChange={handleInputChange}
-                        className="shadow appearance-none border rounded w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        className={`shadow appearance-none border rounded w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${hasError("Open Time") ? 'border-red-500' : ''}`}
                         />
                     </div>
                     <div>
@@ -609,7 +696,7 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                         <input
                         type="time" id="closeTime" name="closeTime" required
                         value={formData.closeTime} onChange={handleInputChange}
-                        className="shadow appearance-none border rounded w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        className={`shadow appearance-none border rounded w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${hasError("Close Time") ? 'border-red-500' : ''}`}
                         />
                     </div>
                 </div>
@@ -617,7 +704,7 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
 
 
             {/* --- Section: Shop Images (ปรับปรุง) --- */}
-            <div className="border p-4 rounded-md space-y-4">
+            <div className={`border p-4 rounded-md space-y-4 ${hasError("image") ? 'border-red-500' : ''}`}>
                 <h3 className="text-lg font-semibold text-gray-800">Shop Images (1-5 images)</h3>
 
                 {/* 1. Current Images */}
@@ -705,9 +792,9 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                     accept="image/jpeg, image/png, image/gif"
                     onChange={handleFileChange}
                     multiple={true}
-                    // required={currentShopImageURLs.length + formData.shopImageFiles.length === 0} // Required ถ้าไม่มีรูปเลย
+                    required={currentShopImageURLs.length + formData.shopImageFiles.length === 0} // Required ถ้าไม่มีรูปเลย
                     // Disable button if max limit reached
-                    // disabled={currentShopImageURLs.length + formData.shopImageFiles.length >= 5}
+                    disabled={currentShopImageURLs.length + formData.shopImageFiles.length >= 5}
                 />
                  {/* Display message if max limit reached */}
                 {(currentShopImageURLs.length + formData.shopImageFiles.length >= 5) &&
@@ -717,7 +804,7 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
             </div>
 
             {/* --- Section: Certificate (ปรับปรุง) --- */}
-            <div className="border p-4 rounded-md space-y-4">
+            <div className={`border p-4 rounded-md space-y-4 ${hasError("certificate") ? 'border-red-500' : ''}`}>
                 <h3 className="text-lg font-semibold text-gray-800">Certificate</h3>
 
                 {/* 1. Current Certificate */}
@@ -796,9 +883,9 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                     accept=".pdf, image/jpeg, image/png"
                     onChange={handleFileChange}
                     multiple={false}
-                    // required={currentCertImageURLs.length + (formData.licenseDocFile ? 1 : 0) === 0} // Required ถ้าไม่มีเลย
+                    required={currentCertImageURLs.length + (formData.licenseDocFile ? 1 : 0) === 0} // Required ถ้าไม่มีเลย
                     // Disable ถ้ามี Certificate อยู่แล้ว (ทั้งเก่าและใหม่)
-                    // disabled={currentCertImageURLs.length + (formData.licenseDocFile ? 1 : 0) >= 1}
+                    disabled={currentCertImageURLs.length + (formData.licenseDocFile ? 1 : 0) >= 1}
                 />
                 {/* Display message if certificate exists */}
                 {(currentCertImageURLs.length + (formData.licenseDocFile ? 1 : 0) >= 1) &&
@@ -832,15 +919,14 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                 {error && (
                     <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
                         <strong className="font-bold">Error:</strong>
-                        {/* --- แก้ไขเงื่อนไขตรงนี้ --- */}
+                        {/* --- แสดง Error แบบ List ถ้าเป็น Validation Error --- */}
                         {typeof error === 'string' && error.startsWith('Validation failed:') ? (
                             <ul className="list-disc list-inside mt-1">
-                                {/* --- แก้ไขความยาว substring ตรงนี้ --- */}
                                 {error.substring('Validation failed:'.length)
-                                      .split(/\s*,\s*/) // ใช้ Regex เหมือนเดิม
-                                      .filter(msg => msg.trim() !== '') // กรองค่าว่าง
+                                      .split(/\s*,\s*/) // Split by comma and optional spaces
+                                      .filter(msg => msg.trim() !== '') // Filter out empty strings
                                       .map((errMsg, index) => (
-                                          <li key={index}>{errMsg.replace(/^shop\./, '').trim()}</li>
+                                          <li key={index}>{errMsg.trim()}</li> // Trim whitespace
                                       ))
                                 }
                             </ul>
@@ -850,7 +936,7 @@ const handleRestoreDeleted = (urlToRestore: string, type: 'shop' | 'certificate'
                     </div>
                 )}
             </div>
-          
+
         {/* --- Confirmation Dialog (เหมือนเดิม) --- */}
         <Dialog disableScrollLock open={openConfirmDialog} onClose={() => setOpenConfirmDialog(false)} /* ... */ >
             <DialogTitle>Confirm Edit</DialogTitle>
