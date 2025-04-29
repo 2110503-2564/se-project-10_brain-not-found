@@ -124,7 +124,7 @@ export function ReviewSection({ shopId }: { shopId: string }) {
 
   return (
     <Stack spacing={4}>
-      <Typography variant="h5" component="h2" sx={{ fontWeight: "bold" }}>
+      <Typography variant="h5" component="h2" sx={{ fontWeight: "bold" }} aria-label="Reviews">
         Reviews
       </Typography>
 
@@ -165,7 +165,7 @@ export function ReviewSection({ shopId }: { shopId: string }) {
             multiline
             minRows={3}
           />
-          <Button variant="contained" onClick={handleSubmit} disabled={submitting}>
+          <Button variant="contained" onClick={handleSubmit} disabled={submitting} aria-label="Submit Review">
             {submitting ? "Submitting..." : "Submit Review"}
           </Button>
         </Stack>
